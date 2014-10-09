@@ -1,0 +1,28 @@
+{
+  "name": "rx.wamp",
+  "version": "0.0.1",
+  "description": "",
+  "main": "rx.wamp.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulpdaniels/rx.wamp.git"
+  },
+  "keywords": [
+    "rx",
+    "rxjs",
+    "wamp",
+    "async",
+    "realtime"
+  ],
+  "author": "Paul Daniels <paulpdaniels@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/paulpdaniels/rx.wamp/issues"
+  }
+}
