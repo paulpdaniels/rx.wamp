@@ -1,7 +1,7 @@
 rx.wamp
 =======
 
-A wrapper library for the autobahn wamp library in the browser/node
+A wrapper library for the autobahn wamp v2 library in the browser/node
 
 
 ### Connection
@@ -103,6 +103,7 @@ session.callObservable("wamp.my.add", [2, 3], {}, {})
 - Bug fixing
 - Improve API semantics and readability
 - Push to cdn platforms (npm/bower/cdnjs or microjs).
+- [Minor] Add v1 backward compatibility
 
 
 
