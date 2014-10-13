@@ -11,8 +11,11 @@ function newSession(session) {
   console.log("A new session was created");
 }
 
-autobahn.connectObservable("ws://localhost:9000")
+var connectionSubscription = autobahn.connectObservable("ws://localhost:9000")
     .subscribe(newSession);
+    
+//Close our current connection and don't retry
+connectionSubscription.dispose();
 
 
 ```
@@ -47,17 +50,6 @@ topicSubscription.dispose();
 
 ```
 
-### Calling methods
-```javascript
-
-session.callObservable("wamp.my.add", [2, 3], {}, {})
-    .subscribe(function(value){
-      // => 5
-      console.log("Result was %s", value);
-    });
-
-```
-
 ### Registering methods
 ```javascript
 
@@ -87,5 +79,23 @@ var registration =
 registration.dispose();
 
 ```
+
+
+
+### Calling methods
+
+We can call methods, like the one in the example above, as well.
+
+```javascript
+
+session.callObservable("wamp.my.add", [2, 3], {}, {})
+    .subscribe(function(value){
+      // => 5
+      console.log("Result was %s", value);
+    });
+
+```
+
+
 
 
