@@ -13,7 +13,7 @@ autobahn.connectObservable = function(opts, reconnect) {
 
     (reconnect || Observable.empty()).subscribe(shouldReconnect);
 
-    return Observable.create(function(observer){
+    return Observable.createWithDisposable(function(observer){
 
         function onOpen(session){
             observer.onNext(session);
@@ -40,6 +40,8 @@ autobahn.connectObservable = function(opts, reconnect) {
         connection.onopen = onOpen;
         connection.onclose = onClose;
 
+        connection.open();
+
         return function() {
             if (connection.isOpen) {
                 connection.close();
@@ -51,7 +53,7 @@ autobahn.connectObservable = function(opts, reconnect) {
 
 var sessionProto  = autobahn.Session.prototype;
 
-sessionProto.subscribeObservable = function(topic, handler, options) {
+sessionProto.subscribeObservable = function(topic, options) {
 
     var self = this;
 
@@ -72,7 +74,7 @@ sessionProto.subscribeObservable = function(topic, handler, options) {
             subscription.flatMap(function(sub){
                 return Observable.fromPromise(self.unsubscribe(sub));
             })
-                .never()
+                .ignoreElements()
                 .subscribe(observer);
         };
 
@@ -94,7 +96,7 @@ sessionProto.registerObservable = function(procedure, endpoint, options){
             registration.flatMap(function(reg){
                 return Observable.fromPromise(self.unregister(reg));
             })
-                .never()
+                .ignoreElements()
                 .subscribe(observer);
         }
     });
