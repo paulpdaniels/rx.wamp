@@ -97,5 +97,12 @@ session.callObservable("wamp.my.add", [2, 3], {}, {})
 ```
 
 
+###TODO
+
+- Implement cross-platform compatibility (currently only works in node)
+- Bug fixing
+- Improve API semantics and readability
+- Push to cdn platforms (npm/bower/cdnjs or microjs).
+
 
 
