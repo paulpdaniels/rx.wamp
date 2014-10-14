@@ -97,8 +97,31 @@ describe('Wamp', function () {
 
 
                     });
-
             });
+
+            it("should be handle concatenation gracefully", function(done) {
+                this.timeout(4000);
+                setTimeout(function(){
+                    router.publish("wamp.io.test2", 1, [1, 2], {});
+                }, 3000);
+
+
+                var subscription = client.subscribeObservable("wamp.io.test2")
+                    .concatAll()
+                    .subscribe(function(value){
+                        try {
+                            value.args[0].should.equal(1);
+                            value.args[1].should.equal(2);
+                        } catch (e) {
+                            done(e);
+                            return;
+                        }
+
+                        subscription.dispose();
+
+                        done();
+                    });
+            })
         });
 
         describe("#registerObservable", function () {
@@ -119,10 +142,7 @@ describe('Wamp', function () {
 
                     });
                 });
-
-
             })
-
         });
 
         describe("#publishObservable", function () {

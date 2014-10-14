@@ -78,17 +78,18 @@ sessionProto.subscribeObservable = function (topic, options) {
             .subscribe(observer.onNext.bind(observer),
             observer.onError.bind(observer));
 
-
-        return function () {
+        var disposable = Rx.Disposable.create(function(){
             topicSubscription.dispose();
-
             //Automatically unsubscribe
             unsubscriber.
                 subscribe(function () {
                 },
                 observer.onError.bind(observer),
                 observer.onCompleted.bind(observer));
-        };
+        });
+
+
+        return new Rx.RefCountDisposable(disposable);
     });
 };
 
