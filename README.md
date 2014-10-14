@@ -35,6 +35,8 @@ function getResultValue(value) {
 var topicObservable = session.subscribeObservable("wamp.my.foo", {});
 
 //Do all the normal reactive operations on it
+
+//Only care about the events
 var topicSubscription = 
 topicObservable
     .concatAll()
@@ -42,12 +44,28 @@ topicObservable
     .map(getResultValues)
     .subscribe(function(value){
         //This will print only the second argument
-        console.log("Got %s", value);
+        console.log("Got %s", value.args);
     });
+    
+//Nested way, listen for subscription
+topicSubscription2 = 
+topicObservable
+  .subscribe(function(topic){
+      
+      topic
+      .filter(validateArgs)
+      .map(getResultValues)
+      .take(4)
+      .subscribe(function(value){
+        console.log("Got %s", value.args);
+      });
+      
+  })
     
     
 //Unsubscribe from topic
 topicSubscription.dispose();
+topicSubscription2.dispose();
 
 ```
 
@@ -92,9 +110,16 @@ We can call methods, like the one in the example above, as well.
 session.callObservable("wamp.my.add", [2, 3], {}, {})
     .subscribe(function(value){
       // => 5
-      console.log("Result was %s", value);
+      console.log("Result was %s", value.args[0]);
     });
+    
+//TODO Shorthand
+var add = session.caller("wamp.my.add");
 
+add([2, 3]).subscribe(function(value) {
+  // => 5
+  console.log("Result was the same %d", value.args[0]);
+});
 ```
 
 
