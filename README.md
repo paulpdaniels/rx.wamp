@@ -37,6 +37,7 @@ var topicObservable = session.subscribeObservable("wamp.my.foo", {});
 //Do all the normal reactive operations on it
 var topicSubscription = 
 topicObservable
+    .concatAll()
     .filter(validateArgs)
     .map(getResultValues)
     .subscribe(function(value){
