@@ -56,28 +56,31 @@ sessionProto.subscribeObservable = function (topic, options) {
 
     return Observable.create(function (observer) {
 
+        var subject = new Rx.Subject();
+
         function onNext(args, kwargs, details) {
-            observer.onNext({args: args, kwargs: kwargs, details: details});
+            subject.onNext({args: args, kwargs: kwargs, details: details});
         }
+
+        var nextObservable = subject.publish();
 
         //Creates an observable from the promise
         var subscription = Observable.fromPromise(self.subscribe(topic, onNext, options));
 
-        //We only care about errors propagating out of here
-        subscription.subscribeOnError(observer);
-
-        var unsubscriber = subscription
-            .flatMap(function (sub) {
-                return Observable.fromPromise(self.unsubscribe(sub));
+        subscription.subscribe(function(topic){
+            subject.subscribeOnCompleted(function(){
+                Observable.fromPromise(self.unsubscribe(topic)).subscribeOnError(observer);
             })
-            .ignoreElements();
+        });
 
-        return function () {
-            //Attempt to unsubscribe and forward the complete and error messages to the observer
-            unsubscriber.subscribe(observer);
-        };
+        //We only care about errors propagating out of here
+        subscription
+            .map(function(){
+                return nextObservable;
+            })
+            .subscribe(observer);
 
-
+        nextObservable.connect();
     });
 };
 

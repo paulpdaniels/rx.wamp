@@ -46,7 +46,7 @@ describe('Wamp', function () {
 
         });
 
-        it('should propogate an exception if a connection cannot be established', function (done) {
+        it('should propagate an exception if a connection cannot be established', function (done) {
 
             autobahn.connectObservable({url: "ws://localhost:9001", realm: 'realm1'})
                 .subscribe(function () {
@@ -73,16 +73,33 @@ describe('Wamp', function () {
 
         describe('#subscribeObservable', function () {
 
-            it("should be able to subscribe to topics", function () {
+            it("should be able to subscribe to topics", function (done) {
 
-                client.subscribeObservable("wamp.io.test");
+                client.subscribeObservable("wamp.io.test")
+                    .subscribe(function(topic){
+
+                        var subscription = topic.subscribe(function(value){
+                            try {
+                                value.args[0].should.equal(1);
+                                value.args[1].should.equal(2);
+                            } catch (e) {
+                                done(e);
+                                return;
+                            }
+
+                            subscription.dispose();
+                            done();
+                        });
+
+                        router.publish("wamp.io.test", 0, [1, 2], {test : "test"});
+
+
+                    });
 
             });
         });
 
         describe("#registerObservable", function () {
-
-
 
             it('should be able to register for topics', function (done) {
                 client.registerObservable('wamp.io.add', function (args, kwargs, options) {
@@ -108,10 +125,14 @@ describe('Wamp', function () {
 
         describe("#publishObservable", function () {
 
+            afterEach(function(){
+                router.unsubstopic("wamp.io.test", 5);
+            });
+
 
             it('should be able to publish to topics', function (done) {
 
-                router.substopic("wamp.io.test", 0, function(id, args, kwargs){
+                router.substopic("wamp.io.test", 5, function(id, args, kwargs){
                     try {
                         args[0].should.equal(1);
                         args[1].should.equal(2);
