@@ -1,7 +1,7 @@
 rx.wamp
 =======
 
-A wrapper library for the autobahn wamp v2 library in the browser/node
+A wrapper library for the autobahn wamp v1/v2 library in the browser/node
 
 
 ### Connection
@@ -113,7 +113,7 @@ session.callObservable("wamp.my.add", [2, 3], {}, {})
       console.log("Result was %s", value.args[0]);
     });
     
-//TODO Shorthand
+//Shorthand
 var add = session.caller("wamp.my.add");
 
 add([2, 3]).subscribe(function(value) {
@@ -121,6 +121,47 @@ add([2, 3]).subscribe(function(value) {
   console.log("Result was the same %d", value.args[0]);
 });
 ```
+
+## V1
+
+It also supports the v1 library.
+
+
+### Subscribing
+
+```javascript
+
+//Notice the difference between this and v2
+session.subscribeObservable("wamp.subscribe.event")
+  .subscribe(function(event) {
+    console.log("New event: %s", event);
+  });
+
+```
+
+### Publishing
+
+```javascript
+
+session.publishObservable("wamp.publish.event", {id : "me"}, true)
+  .subscribeOnCompleted(function(){});
+
+```
+
+### Calling methods
+
+```javascript
+
+session.callObservable("wamp.my.add", 2, 3)
+  .subscribe(function(value){
+    console.log("Result was %d", value);
+  });
+  
+  
+
+```
+
+
 
 
 ###TODO
