@@ -71,6 +71,24 @@ try {
 
         subscribeObservable : function(topicUri){
 
+            var self = this;
+
+            return Observable.create(function(observer){
+
+                function callback(topic, event) {
+                    observer.onNext({topic : topic, event : event});
+                }
+
+                self.subscribe(topicUri, callback);
+
+                return function(){
+                    self.unsubscribe(topicUri, callback);
+                };
+
+            });
+
+
+
         },
 
         callObservable : function() {
