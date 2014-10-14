@@ -73,9 +73,11 @@ describe('Wamp', function () {
 
         describe('#subscribeObservable', function () {
 
+
             it("should be able to subscribe to topics", function (done) {
 
-                client.subscribeObservable("wamp.io.test")
+                client
+                    .subscribeObservable("wamp.io.test")
                     .subscribe(function(topic){
 
                         var subscription = topic.subscribe(function(value){

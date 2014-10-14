@@ -62,25 +62,33 @@ sessionProto.subscribeObservable = function (topic, options) {
             subject.onNext({args: args, kwargs: kwargs, details: details});
         }
 
-        var nextObservable = subject.publish();
-
         //Creates an observable from the promise
-        var subscription = Observable.fromPromise(self.subscribe(topic, onNext, options));
+        var subscriber = Observable.fromPromise(self.subscribe(topic, onNext, options));
 
-        subscription.subscribe(function(topic){
-            subject.subscribeOnCompleted(function(){
-                Observable.fromPromise(self.unsubscribe(topic)).subscribeOnError(observer);
+        var unsubscriber = subscriber.flatMap(function (token) {
+            return Observable.fromPromise(self.unsubscribe(token));
+        }).ignoreElements();
+
+        //Forward the errors from connection on to the end user
+        var topicSubscription = subscriber
+            .map(function (_) {
+                //Ignore the incoming event and just send the subject
+                return subject.asObservable();
             })
-        });
+            .subscribe(observer.onNext.bind(observer),
+            observer.onError.bind(observer));
 
-        //We only care about errors propagating out of here
-        subscription
-            .map(function(){
-                return nextObservable;
-            })
-            .subscribe(observer);
 
-        nextObservable.connect();
+        return function () {
+            topicSubscription.dispose();
+
+            //Automatically unsubscribe
+            unsubscriber.
+                subscribe(function () {
+                },
+                observer.onError.bind(observer),
+                observer.onCompleted.bind(observer));
+        };
     });
 };
 
@@ -91,11 +99,11 @@ sessionProto.registerObservable = function (procedure, endpoint, options) {
     return Observable.create(function (observer) {
 
         var subscriber = Observable.fromPromise(self.register(procedure, endpoint, options));
-        var unsubscriber = subscriber.flatMap(function(sub){
+        var unsubscriber = subscriber.flatMap(function (sub) {
             return Observable.fromPromise(self.unregister(sub));
         }).ignoreElements();
 
-        subscriber.subscribe(observer);
+        subscriber.subscribe(observer.onNext.bind(observer), observer.onError.bind(observer));
 
         return function () {
             unsubscriber.subscribe(observer);
