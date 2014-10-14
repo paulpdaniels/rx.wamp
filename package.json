@@ -27,7 +27,8 @@
   },
   "devDependencies": {
     "qunitjs": "~1.15.0",
-    "wamp.rt": "~0.1.2"
+    "wamp.rt": "~0.1.2",
+    "chai": "~1.9.2"
   },
   "dependencies": {
     "rx": "~2.3.13",
