@@ -16,14 +16,8 @@ describe('Wamp', function () {
 
     before(function () {
 
-        router = new Router({port: 9000,
-            handleProtocols: function (protocols, cb) {
-                console.log(protocols);
-                cb(true, protocols[0]);
-            }
+        router = new Router({port: 9000
         });
-
-
     });
 
     beforeEach(function () {
@@ -52,6 +46,18 @@ describe('Wamp', function () {
 
         });
 
+        it('should propogate an exception if a connection cannot be established', function (done) {
+
+            autobahn.connectObservable({url: "ws://localhost:9001", realm: 'realm1'})
+                .subscribe(function () {
+                    done(new Error("No return value expected"));
+                }, function (e) {
+                    done();
+                }, function () {
+                    done(new Error("should not complete"));
+                });
+        });
+
     });
 
     describe(".clients", function () {
@@ -76,32 +82,89 @@ describe('Wamp', function () {
 
         describe("#registerObservable", function () {
 
-            it('should be able to register for topics', function(){
-                client.registerObservable('wamp.io.add', function(args, kwargs, options){});
+
+
+            it('should be able to register for topics', function (done) {
+                client.registerObservable('wamp.io.add', function (args, kwargs, options) {
+                    return args[0] + args[1];
+                }).subscribe(function(){
+                    router.callrpc('wamp.io.add', [[1, 2]], function(args){
+                        try {
+                            args[0][0].should.equal(3);
+                        } catch (e) {
+                            done(e);
+                            return;
+                        }
+
+                        done();
+
+                    });
+                });
+
+
             })
 
         });
 
         describe("#publishObservable", function () {
 
-            it('should be able to publish to topics', function(){
-                client.publishObservable('wamp.io.test',[1, 2], {});
+
+            it('should be able to publish to topics', function (done) {
+
+                router.substopic("wamp.io.test", 0, function(id, args, kwargs){
+                    try {
+                        args[0].should.equal(1);
+                        args[1].should.equal(2);
+                        kwargs.should.have.property("test");
+                        kwargs.test.should.equal("test");
+                    } catch (e) {
+                        done(e);
+                        return;
+                    }
+
+                    done();
+                });
+
+                client.publishObservable('wamp.io.test', [1, 2], {test : "test"});
             });
 
         });
 
         describe("#callObservable", function () {
 
-            it('should be able to call remote methods', function(){
+            beforeEach(function(done){
 
-                client.callObservable('wamp.io.add', [1, 2], {});
+                router.on("RPCRegistered", function(){done();});
+
+                router.regrpc("wamp.io.add", function(id, args){
+                    var kwargs = args[1];
+                    args = args[0];
+
+                    router.resrpc(id, [[args[0] + args[1]], {test : -1}]);
+
+                });
+
+            });
+
+            afterEach(function(){
+
+                router.unregrpc("wamp.io.add");
+
+            });
+
+            it('should be able to call remote methods', function (done) {
+
+                client.callObservable('wamp.io.add', [1, 2], {})
+                    .subscribe(function(value) {
+                        value.args[0].should.equal(3);
+                        done();
+                    }, done);
 
             })
 
         });
 
     });
-
 
 
 });

@@ -87,16 +87,15 @@ sessionProto.registerObservable = function (procedure, endpoint, options) {
 
     return Observable.create(function (observer) {
 
-        var registration = Observable.fromPromise(self.register(procedure, endpoint, options));
-        registration.subscribeOnError(observer);
+        var subscriber = Observable.fromPromise(self.register(procedure, endpoint, options));
+        var unsubscriber = subscriber.flatMap(function(sub){
+            return Observable.fromPromise(self.unregister(sub));
+        }).ignoreElements();
+
+        subscriber.subscribe(observer);
 
         return function () {
-
-            registration.flatMap(function (reg) {
-                return Observable.fromPromise(self.unregister(reg));
-            })
-                .ignoreElements()
-                .subscribe(observer);
+            unsubscriber.subscribe(observer);
         }
     });
 
