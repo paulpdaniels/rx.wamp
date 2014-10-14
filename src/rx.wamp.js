@@ -239,16 +239,17 @@ try {
         }
     };
 
+    _connectionExt = _isV2 ? _connectionExt : _connectionExt_v1;
+    _sessionExt = _isV2 ? _sessionExt : _sessionExt_v1;
 
 
-
-    for (var key in (_isV2 ? _connectionExt : _connectionExt_v1)) {
+    for (var key in _connectionExt) {
         autobahn[key] = _connectionExt[key];
     }
 
     var sessionProto = autobahn.Session.prototype;
 
-    for (var key in (_isV2 ? _sessionExt : _sessionExt_v1)) {
+    for (var key in _sessionExt) {
         sessionProto[key] = _sessionExt[key];
     }
 
