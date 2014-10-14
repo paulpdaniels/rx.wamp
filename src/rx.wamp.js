@@ -1,21 +1,19 @@
-
-
 var autobahn = require('autobahn');
 var Rx = require('rx');
 
 var Observable = Rx.Observable;
 
 
-autobahn.connectObservable = function(opts, reconnect) {
+autobahn.connectObservable = function (opts, reconnect) {
 
-    var connection = new autobahn.Connection(opts);
-    var shouldReconnect = new Rx.BehaviorSubject(true);
+    return Observable.createWithDisposable(function (observer) {
 
-    (reconnect || Observable.empty()).subscribe(shouldReconnect);
+        var connection = new autobahn.Connection(opts);
+        var shouldReconnect = new Rx.BehaviorSubject(true);
 
-    return Observable.createWithDisposable(function(observer){
+        (reconnect || Observable.empty()).subscribe(shouldReconnect);
 
-        function onOpen(session){
+        function onOpen(session) {
             observer.onNext(session);
         }
 
@@ -24,8 +22,7 @@ autobahn.connectObservable = function(opts, reconnect) {
             if (reason === 'closed') {
                 observer.onCompleted();
             } else if (reason === 'unreachable') {
-                observer.onError({reason : reason, detail : detail});
-                observer.onCompleted();
+                observer.onError({reason: reason, detail: detail});
             } else if (reason === 'lost') {
 
                 if (!shouldReconnect.value) {
@@ -42,25 +39,25 @@ autobahn.connectObservable = function(opts, reconnect) {
 
         connection.open();
 
-        return function() {
+        return function () {
             if (connection.isOpen) {
                 connection.close();
             }
         };
 
-    });
+    }).publish().refCount();
 };
 
-var sessionProto  = autobahn.Session.prototype;
+var sessionProto = autobahn.Session.prototype;
 
-sessionProto.subscribeObservable = function(topic, options) {
+sessionProto.subscribeObservable = function (topic, options) {
 
     var self = this;
 
-    return Observable.create(function(observer){
+    return Observable.create(function (observer) {
 
         function onNext(args, kwargs, details) {
-            observer.onNext({args : args, kwargs : kwargs, details : details});
+            observer.onNext({args: args, kwargs: kwargs, details: details});
         }
 
         //Creates an observable from the promise
@@ -69,31 +66,33 @@ sessionProto.subscribeObservable = function(topic, options) {
         //We only care about errors propagating out of here
         subscription.subscribeOnError(observer);
 
-        return function(){
-            //Attempt to unsubscribe and forward the complete and error messages to the observer
-            subscription.flatMap(function(sub){
+        var unsubscriber = subscription
+            .flatMap(function (sub) {
                 return Observable.fromPromise(self.unsubscribe(sub));
             })
-                .ignoreElements()
-                .subscribe(observer);
+            .ignoreElements();
+
+        return function () {
+            //Attempt to unsubscribe and forward the complete and error messages to the observer
+            unsubscriber.subscribe(observer);
         };
 
 
     });
 };
 
-sessionProto.registerObservable = function(procedure, endpoint, options){
+sessionProto.registerObservable = function (procedure, endpoint, options) {
 
     var self = this;
 
-    return Observable.create(function(observer){
+    return Observable.create(function (observer) {
 
         var registration = Observable.fromPromise(self.register(procedure, endpoint, options));
         registration.subscribeOnError(observer);
 
-        return function() {
+        return function () {
 
-            registration.flatMap(function(reg){
+            registration.flatMap(function (reg) {
                 return Observable.fromPromise(self.unregister(reg));
             })
                 .ignoreElements()
@@ -103,11 +102,11 @@ sessionProto.registerObservable = function(procedure, endpoint, options){
 
 };
 
-sessionProto.callObservable = function(procedure, args, kwargs, options){
+sessionProto.callObservable = function (procedure, args, kwargs, options) {
     return Observable.fromPromise(this.call(procedure, args, kwargs, options));
 };
 
-sessionProto.publishObservable = function(topic, args, kwargs, options) {
+sessionProto.publishObservable = function (topic, args, kwargs, options) {
 
     var self = this;
 
