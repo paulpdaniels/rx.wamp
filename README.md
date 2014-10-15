@@ -1,7 +1,7 @@
 rx.wamp
 =======
 
-A wrapper library for the autobahn wamp v2 library in the browser/node
+A wrapper library for the autobahn wamp v1/v2 library in the browser/node
 
 
 ### Connection
@@ -35,6 +35,8 @@ function getResultValue(value) {
 var topicObservable = session.subscribeObservable("wamp.my.foo", {});
 
 //Do all the normal reactive operations on it
+
+//Only care about the events
 var topicSubscription = 
 topicObservable
     .concatAll()
@@ -42,12 +44,28 @@ topicObservable
     .map(getResultValues)
     .subscribe(function(value){
         //This will print only the second argument
-        console.log("Got %s", value);
+        console.log("Got %s", value.args);
     });
+    
+//Nested way, listen for subscription
+topicSubscription2 = 
+topicObservable
+  .subscribe(function(topic){
+      
+      topic
+      .filter(validateArgs)
+      .map(getResultValues)
+      .take(4)
+      .subscribe(function(value){
+        console.log("Got %s", value.args);
+      });
+      
+  })
     
     
 //Unsubscribe from topic
 topicSubscription.dispose();
+topicSubscription2.dispose();
 
 ```
 
@@ -92,19 +110,67 @@ We can call methods, like the one in the example above, as well.
 session.callObservable("wamp.my.add", [2, 3], {}, {})
     .subscribe(function(value){
       // => 5
-      console.log("Result was %s", value);
+      console.log("Result was %s", value.args[0]);
     });
+    
+//Shorthand
+var add = session.caller("wamp.my.add");
+
+add([2, 3]).subscribe(function(value) {
+  // => 5
+  console.log("Result was the same %d", value.args[0]);
+});
+```
+
+## V1
+
+It also supports the v1 library.
+
+
+### Subscribing
+
+```javascript
+
+//Notice the difference between this and v2
+session.subscribeObservable("wamp.subscribe.event")
+  .subscribe(function(event) {
+    console.log("New event: %s", event);
+  });
+
+```
+
+### Publishing
+
+```javascript
+
+session.publishObservable("wamp.publish.event", {id : "me"}, true)
+  .subscribeOnCompleted(function(){});
+
+```
+
+### Calling methods
+
+```javascript
+
+session.callObservable("wamp.my.add", 2, 3)
+  .subscribe(function(value){
+    console.log("Result was %d", value);
+  });
+  
+  
 
 ```
 
 
+
+
 ###TODO
 
-- Implement cross-platform compatibility (currently only works in node)
-- Bug fixing
-- Improve API semantics and readability
-- Push to cdn platforms (npm/bower/cdnjs or microjs).
-- [Minor] Add v1 backward compatibility
+- [X] [Major] ~~Implement cross-platform compatibility (currently only works in node)~~
+- [ ] [Major] Bug fixing
+- [ ] [Major] Improve API semantics and readability
+- [ ] [Major] Push to cdn platforms (~~npm~~/bower/cdnjs or microjs).
+- [x] [Minor] ~~Add v1 backward compatibility~~
 
 
 
