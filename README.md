@@ -133,9 +133,11 @@ var multiplier = session.caller("wamp.my.multiply");
 //Somewhat contrived but you get the idea
 var pipeline = 
   adder([2, 3])
-    .zip(adder([3, 4]), function(value1, value2) { return [value1.args[0], value2.args[0]];})
+    .zip(adder([3, 4]), function(value1, value2) { 
+      return [value1.args[0], value2.args[0]];
+    })
     .flatMap(function(value) { 
-      return multiplier(value.args[0], value.args[1]); 
+      return multiplier(value[0], value[1]); 
     });
   
   pipeline.subscribe(function(value){
