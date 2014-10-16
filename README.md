@@ -1,7 +1,7 @@
 rx.wamp
 =======
 
-A wrapper library for the autobahn wamp v1/v2 library in the browser/node
+A Reactive wrapper library for the autobahn wamp v1/v2 library in the browser/node
 
 
 ### Connection
@@ -122,6 +122,30 @@ add([2, 3]).subscribe(function(value) {
 });
 ```
 
+### Advanced
+
+```javascript
+
+//Create a pipeline of distributed computation
+var adder = session.caller("wamp.my.add");
+var multiplier = session.caller("wamp.my.multiply");
+
+//Somewhat contrived but you get the idea
+var pipeline = 
+  adder([2, 3])
+    .zip(adder([3, 4]), function(value1, value2) { return [value1.args[0], value2.args[0]];})
+    .flatMap(function(value) { 
+      return multiplier(value.args[0], value.args[1]); 
+    });
+  
+  pipeline.subscribe(function(value){
+    // =>  (2 + 3) * (3 + 4) = 35
+    console.log("Result was %d", value.args[0]);
+  })
+
+
+```
+
 ## V1
 
 It also supports the v1 library.
@@ -160,6 +184,8 @@ session.callObservable("wamp.my.add", 2, 3)
   
 
 ```
+
+
 
 
 
