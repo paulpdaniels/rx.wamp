@@ -1,18 +1,14 @@
 'use strict';
 
-var _autobahn = undefined;
-var _rx = undefined;
-
-try {
-    _autobahn = require('autobahn');
-    _rx = require('rx');
-} catch (e) {
-    //These are defined by the browser
-    _autobahn = autobahn;
-    _rx = Rx;
-}
-
-(function (Rx, autobahn) {
+(function(window, factory){
+    if (typeof define === 'function' && define.amd){
+        define(['rx', 'autobahn'], factory);
+    } else if (typeof exports === 'object') {
+        module.exports = factory(require('rx'), require('autobahn'));
+    } else {
+        factory(rx, autobahn);
+    }
+})(this, function (Rx, autobahn) {
 
     var Observable = Rx.Observable;
 
@@ -255,4 +251,4 @@ try {
 
     return _isV2;
 
-})(_rx, _autobahn);
+});
