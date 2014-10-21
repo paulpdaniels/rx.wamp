@@ -4,6 +4,42 @@ rx.wamp
 A Reactive wrapper library for the autobahn wamp v1/v2 library in the browser/node
 
 
+### Installation
+
+
+#### Regular browser
+```javascript
+
+<script type="application/javascript" src="javascripts/rx.wamp.js" ></script>
+
+```
+
+#### RequireJS
+```javascript
+
+require(['autobahn', 'rx.wamp'], function(autobahn) {
+
+  //Do stuff
+
+});
+
+```
+
+#### NodeJS
+```javascript
+
+var autobahn = require('autobahn');
+var rxwamp = require('rx.wamp');
+
+
+//Do stuff with the autobahn
+autobahn
+  .connectObservable({url: 'ws://localhost:9000', realm: 'realm1'});
+
+
+```
+
+
 ### Connection
 ```javascript
 
