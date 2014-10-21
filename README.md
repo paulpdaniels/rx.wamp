@@ -116,10 +116,17 @@ session.callObservable("wamp.my.add", [2, 3], {}, {})
 //Shorthand
 var add = session.caller("wamp.my.add");
 
-add([2, 3]).subscribe(function(value) {
+var addResult = add([2, 3]);
+
+addResult.subscribe(function(value) {
   // => 5
   console.log("Result was the same %d", value.args[0]);
 });
+
+//Subscribe as many times as possible
+addResult.subscribe(function(value) {});
+
+
 ```
 
 ### Advanced
