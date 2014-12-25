@@ -7,7 +7,7 @@ module.exports = function(grunt) {
             options : {
             },
             dist : {
-                src : ['src/rx.wamp.js'],
+                src : ['src/intro.js', 'src/header.js', 'src/version.js', 'src/connection.js', 'src/session.js', 'src/outro.js'],
                 dest : 'dist/rx.wamp.js'
             }
         },

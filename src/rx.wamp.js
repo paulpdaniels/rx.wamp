@@ -16,8 +16,11 @@
 
     var _connectionExt_v1 = {
 
-        connectObservable: function (uri, opts, reconnect) {
-            return Observable.createWithDisposable(function (observer) {
+        connectObservable: function (opts, reconnect) {
+
+
+
+            return Observable.create(function (observer) {
 
                 var shouldReconnect = new Rx.BehaviorSubject(true);
                 (reconnect || Observable.empty()).subscribe(shouldReconnect);

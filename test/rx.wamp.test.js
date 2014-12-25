@@ -22,7 +22,7 @@ describe('Wamp', function () {
     });
 
     beforeEach(function () {
-        connector = autobahn.connectObservable({url: 'ws://localhost:9000', realm: 'realm1'});
+        connector = Rx.Observable.fromConnection({url: 'ws://localhost:9000', realm: 'realm1'});
     });
 
     describe('#connectObservable', function () {
@@ -49,7 +49,7 @@ describe('Wamp', function () {
 
         it('should propagate an exception if a connection cannot be established', function (done) {
 
-            autobahn.connectObservable({url: "ws://localhost:9001", realm: 'realm1'})
+            Rx.Observable.fromConnection({url: "ws://localhost:9001", realm: 'realm1'})
                 .subscribe(function () {
                     done(new Error("No return value expected"));
                 }, function (e) {
@@ -72,13 +72,13 @@ describe('Wamp', function () {
             });
         });
 
-        describe('#subscribeObservable', function () {
+        describe('#subscribeAsObservable', function () {
 
 
             it("should be able to subscribe to topics", function (done) {
 
                 client
-                    .subscribeObservable("wamp.io.test")
+                    .subscribeAsObservable("wamp.io.test")
                     .subscribe(function (topic) {
 
                         var subscription = topic.subscribe(function (value) {
@@ -107,7 +107,7 @@ describe('Wamp', function () {
                 }, 3000);
 
 
-                var subscription = client.subscribeObservable("wamp.io.test2")
+                var subscription = client.subscribeAsObservable("wamp.io.test2")
                     .concatAll()
                     .subscribe(function (value) {
                         try {
@@ -125,10 +125,10 @@ describe('Wamp', function () {
             })
         });
 
-        describe("#registerObservable", function () {
+        describe("#registerAsObservable", function () {
 
             it('should be able to register for topics', function (done) {
-                client.registerObservable('wamp.io.add', function (args, kwargs, options) {
+                client.registerAsObservable('wamp.io.add', function (args, kwargs, options) {
                     return args[0] + args[1];
                 }).subscribe(function () {
                     router.callrpc('wamp.io.add', [
@@ -171,12 +171,12 @@ describe('Wamp', function () {
                     done();
                 });
 
-                client.publishObservable('wamp.io.test', [1, 2], {test: "test"});
+                client.publishAsObservable('wamp.io.test', [1, 2], {test: "test"});
             });
 
         });
 
-        describe("#callObservable", function () {
+        describe("#callAsObservable", function () {
 
             beforeEach(function () {
 
@@ -205,7 +205,9 @@ describe('Wamp', function () {
 
             it('should be able to call remote methods', function (done) {
 
-                client.callObservable('wamp.io.add', [1, 2], {})
+                var caller = client.callAsObservable("wamp.io.add");
+
+                caller([1, 2], {})
                     .subscribe(function (value) {
                         value.args[0].should.equal(3);
                         done();
@@ -241,8 +243,8 @@ describe('Wamp', function () {
 
 
 
-                var adder = client.caller("wamp.my.add");
-                var multiplier = client.caller("wamp.my.multiply");
+                var adder = client.callAsObservable("wamp.my.add");
+                var multiplier = client.callAsObservable("wamp.my.multiply");
 
                 var pipeline =
                     Rx.Observable.zip(adder([2, 3]), adder([3, 4]),
