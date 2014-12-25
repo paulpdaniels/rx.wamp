@@ -214,7 +214,7 @@
         },
 
         callObservable: function (procedure, args, kwargs, options) {
-            return Observable.fromPromise(this.call(procedure, args, kwargs, options));
+            return Observable.fromPromise(this.call.apply(this, arguments));
         },
 
         caller : function(method) {

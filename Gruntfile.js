@@ -3,21 +3,36 @@ module.exports = function(grunt) {
     // Project configuration.
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
-//        uglify: {
-//            options: {
-//                banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n'
-//            },
-//            build: {
-//                src: 'src/<%= pkg.name %>.js',
-//                dest: 'build/<%= pkg.name %>.min.js'
-//            }
-//        }
+        concat : {
+            options : {
+            },
+            dist : {
+                src : ['src/rx.wamp.js'],
+                dest : 'dist/rx.wamp.js'
+            }
+        },
+        uglify : {
+            options : {
+                mangle : {
+                    except : ['autobahn', 'rx']
+                },
+                sourceMap : true,
+                sourceMapName : 'dist/rx.wamp.map'
+            },
+            distFiles : {
+                files : {
+                    'dist/rx.wamp.min.js' : ['dist/rx.wamp.js']
+                }
+            }
+        }
     });
 
     // Load the plugin that provides the "uglify" task.
 //    grunt.loadNpmTasks('grunt-contrib-uglify');
 
+    grunt.loadNpmTasks('grunt-contrib-concat');
+    grunt.loadNpmTasks('grunt-contrib-uglify');
     // Default task(s).
-    grunt.registerTask('default', []);
+    grunt.registerTask('default', ['concat', 'uglify']);
 
 };
