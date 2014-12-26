@@ -7,30 +7,40 @@ var wamp = require('../index');
 var chai = require('chai');
 var should = chai.should();
 var autobahn = require('autobahn');
-var Router = require('wamp.rt');
-
+var sinon = require('sinon');
 
 describe('Wamp', function () {
 
     var router;
     var connector;
+    var mock_session;
+    var stub_connection;
 
-    before(function () {
+    before(function() {
+        mock_session = sinon.stub();
 
-        router = new Router({port: 9000
+        stub_connection = sinon.stub(autobahn.Connection.prototype, "open", function(){
+            this.onopen(mock_session);
         });
     });
 
-    beforeEach(function () {
-        connector = Rx.Observable.fromConnection({url: 'ws://localhost:9000', realm: 'realm1'});
+    afterEach(function(){
+        stub_connection.restore();
     });
 
     describe('#connectObservable', function () {
 
+        beforeEach(function () {
+            connector = Rx.Observable.fromConnection({
+                url: 'ws://localhost:9000', realm: 'realm1'
+            });
+        });
+
         it('should return a new session object onNext', function (done) {
 
             connector
-                .subscribe(function () {
+                .subscribe(function (session) {
+                    session.should.equal(mock_session);
                     done();
                 },
                 done);
@@ -64,50 +74,34 @@ describe('Wamp', function () {
     describe(".clients", function () {
 
         var client;
+        var sessionSubject = new Rx.BehaviorSubject();
+        var testScheduler = new Rx.TestScheduler();
 
-        beforeEach(function (done) {
-            connector.subscribe(function (session) {
-                client = session;
-                done();
-            });
+        beforeEach(function () {
+
+            var stub_socket = sinon.stub();
+            var stub_defer = sinon.stub();
+
+            new autobahn.Session(stub_socket, stub_defer);
+
         });
 
         describe('#subscribeAsObservable', function () {
 
-
-            it("should be able to subscribe to topics", function (done) {
-
-                client
-                    .subscribeAsObservable("wamp.io.test")
-                    .subscribe(function (topic) {
-
-                        var subscription = topic.subscribe(function (value) {
-                            try {
-                                value.args[0].should.equal(1);
-                                value.args[1].should.equal(2);
-                            } catch (e) {
-                                done(e);
-                                return;
-                            }
-
-                            subscription.dispose();
-                            done();
-                        });
-
-                        router.publish("wamp.io.test", 0, [1, 2], {test: "test"});
+            it("should be able to subscribe to topics", function () {
 
 
-                    });
+
+                //sessionSubject.subscribe(function(session) {
+                //    session.subscribeAsObservable("wamp.io.test");
+                //    done();
+                //});
+
             });
 
             it("should be handle concatenation gracefully", function (done) {
-                this.timeout(4000);
-                setTimeout(function () {
-                    router.publish("wamp.io.test2", 1, [1, 2], {});
-                }, 3000);
-
-
-                var subscription = client.subscribeAsObservable("wamp.io.test2")
+                var subscription = client
+                    .subscribeAsObservable("wamp.io.test2")
                     .concatAll()
                     .subscribe(function (value) {
                         try {
@@ -131,77 +125,20 @@ describe('Wamp', function () {
                 client.registerAsObservable('wamp.io.add', function (args, kwargs, options) {
                     return args[0] + args[1];
                 }).subscribe(function () {
-                    router.callrpc('wamp.io.add', [
-                        [1, 2]
-                    ], function (args) {
-                        try {
-                            args[0][0].should.equal(3);
-                        } catch (e) {
-                            done(e);
-                            return;
-                        }
 
-                        done();
-
-                    });
                 });
             })
         });
 
         describe("#publishObservable", function () {
 
-            afterEach(function () {
-                router.unsubstopic("wamp.io.test", 5);
-            });
-
-
             it('should be able to publish to topics', function (done) {
-
-                router.substopic("wamp.io.test", 5, function (id, args, kwargs) {
-                    try {
-                        args[0].should.equal(1);
-                        args[1].should.equal(2);
-                        kwargs.should.have.property("test");
-                        kwargs.test.should.equal("test");
-                    } catch (e) {
-                        done(e);
-                        return;
-                    }
-
-                    done();
-                });
-
                 client.publishAsObservable('wamp.io.test', [1, 2], {test: "test"});
             });
 
         });
 
         describe("#callAsObservable", function () {
-
-            beforeEach(function () {
-
-//                router.on("RPCRegistered", function () {
-//                    done();
-//                });
-
-                router.regrpc("wamp.io.add", function (id, args) {
-                    var kwargs = args[1];
-                    args = args[0];
-
-                    router.resrpc(id, [
-                        [args[0] + args[1]],
-                        {test: -1}
-                    ]);
-
-                });
-
-            });
-
-            afterEach(function () {
-
-                router.unregrpc("wamp.io.add");
-
-            });
 
             it('should be able to call remote methods', function (done) {
 
@@ -219,29 +156,7 @@ describe('Wamp', function () {
 
         describe("#advanced", function () {
 
-            beforeEach(function(){
-                router.regrpc("wamp.my.add", function (id, args) {
-                    args = args[0];
-
-                    router.resrpc(id, [
-                        [args[0] + args[1]]
-                    ]);
-
-                });
-
-                router.regrpc("wamp.my.multiply", function(id, args){
-                    args = args[0];
-
-                    router.resrpc(id, [
-                        [args[0] * args[1]]
-                    ]);
-                });
-
-            });
-
             it("should handle pipelined actions", function (done) {
-
-
 
                 var adder = client.callAsObservable("wamp.my.add");
                 var multiplier = client.callAsObservable("wamp.my.multiply");
@@ -256,7 +171,7 @@ describe('Wamp', function () {
                             return multiplier(value);
                         });
 
-                pipeline.subscribe(function(value){
+                pipeline.subscribe(function (value) {
                     try {
                         value.should.equal(35);
                         done();

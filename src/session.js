@@ -9,15 +9,24 @@ sessionProto.subscribeAsObservable = function (topic, options) {
 
         var disposable = new SerialDisposable();
 
-        function handler(args, kwargs, details) {
-            obs.onNext({args: args, kwargs: kwargs, details: details});
-        }
+        var handler = isV2Supported ?
+            function(topic, event) {obs.onNext({topic : topic, event : event});} :
+            function(args, kwargs, details) {
+                obs.onNext({args: args, kwargs: kwargs, details: details});
+            };
 
-        function innerUnsubscribe(subscription) {
-            self.unsubscribe(subscription);
-        }
+        var subscription = self.subscribe(topic, handler, options);
 
-        var subscribed = observableStatic.fromPromise(self.subscribe(topic, handler, options));
+        var innerUnsubscribe = subscription ?
+            function (sub) { self.unsubscribe(sub);} :
+            function (sub) { self.unsubscribe(sub.topic, sub.handler);};
+
+
+        var subscribed = subscription ? observablePromise(subscription) :
+            observableStatic.just({
+                topic : topic,
+                handler : handler
+            });
 
         return new CompositeDisposable(
             disposable,
@@ -32,7 +41,7 @@ sessionProto.subscribeAsObservable = function (topic, options) {
 
 sessionProto.publishAsObservable = function (topic, args, kwargs, options) {
     var published = this.publish.apply(this, arguments);
-    return published ? observableStatic.fromPromise(published) : observableStatic.empty();
+    return published ? observablePromise(published) : observableEmpty();
 };
 
 sessionProto.registerAsObservable = function (procedure, endpoint, options) {
@@ -47,7 +56,7 @@ sessionProto.registerAsObservable = function (procedure, endpoint, options) {
 
         var disposable = new SerialDisposable();
 
-        var registered = observableStatic.fromPromise(self.register(procedure, endpoint, options));
+        var registered = observablePromise(self.register(procedure, endpoint, options));
 
         return new CompositeDisposable(
             disposable,
@@ -64,6 +73,6 @@ sessionProto.callAsObservable = function (procedure, options) {
     return function() {
         args = args.concat(arguments);
         if (options) args.push(options);
-        return observableStatic.fromPromise(self.call.apply(self, args));
+        return observablePromise(self.call.apply(self, args));
     };
 };

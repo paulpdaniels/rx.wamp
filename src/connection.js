@@ -42,7 +42,6 @@ observableStatic.fromConnection = function (opts, keepReconnecting) {
 
     var connection = new Connection(opts);
 
-
     return observableStatic.create(function (obs) {
 
         connection.onopen = function (session) {
@@ -60,12 +59,10 @@ observableStatic.fromConnection = function (opts, keepReconnecting) {
                     obs.onError({reason: reason, details: details, code: code});
                     break;
                 case CONNECTION_LOST:
-                    if (keepReconnecting.isDisposed) {
-                        obs.onCompleted();
-                        return false;
-                    } else {
+                    if(!keepReconnecting.isDisposed)
                         return true;
-                    }
+                    else
+                        obs.onCompleted();
                     break;
                 case CONNECTION_CLOSED:
                 default:
