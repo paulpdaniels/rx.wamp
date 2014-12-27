@@ -11,7 +11,7 @@ function newSession(session) {
   console.log("A new session was created");
 }
 
-var connectionSubscription = autobahn.connectObservable("ws://localhost:9000")
+var connectionSubscription = Rx.Observable.fromConnection("ws://localhost:9000")
     .subscribe(newSession);
     
 //Close our current connection and don't retry
@@ -32,40 +32,19 @@ function getResultValue(value) {
   return value.args[1];
 }
 
-var topicObservable = session.subscribeObservable("wamp.my.foo", {});
+//You may optionally pass in an observer to listen for the subscription completing
+var openObserver = Rx.Observer.create();
+
+var topic = Rx.Observable.subscribeAsObservable(session, "wamp.my.foo", options, openObserver);
 
 //Do all the normal reactive operations on it
-
-//Only care about the events
-var topicSubscription = 
 topicObservable
-    .concatAll()
-    .filter(validateArgs)
-    .map(getResultValues)
-    .subscribe(function(value){
-        //This will print only the second argument
-        console.log("Got %s", value.args);
-    });
-    
-//Nested way, listen for subscription
-topicSubscription2 = 
-topicObservable
-  .subscribe(function(topic){
-      
-      topic
-      .filter(validateArgs)
-      .map(getResultValues)
-      .take(4)
-      .subscribe(function(value){
-        console.log("Got %s", value.args);
-      });
-      
-  })
-    
+  .filter(validateArgs)
+  .map(getResultValue)
+  .subscribe(console.log);
     
 //Unsubscribe from topic
 topicSubscription.dispose();
-topicSubscription2.dispose();
 
 ```
 
@@ -107,7 +86,7 @@ We can call methods, like the one in the example above, as well.
 
 ```javascript
 
-session.callObservable("wamp.my.add", [2, 3], {}, {})
+session.callAsObservable("wamp.my.add", [2, 3], {}, {})
     .subscribe(function(value){
       // => 5
       console.log("Result was %s", value.args[0]);
@@ -156,7 +135,7 @@ It also supports the v1 library.
 ```javascript
 
 //Notice the difference between this and v2
-session.subscribeObservable("wamp.subscribe.event")
+session.subscribeAsObservable("wamp.subscribe.event")
   .subscribe(function(event) {
     console.log("New event: %s", event);
   });
@@ -167,7 +146,7 @@ session.subscribeObservable("wamp.subscribe.event")
 
 ```javascript
 
-session.publishObservable("wamp.publish.event", {id : "me"}, true)
+session.publishAsObservable("wamp.publish.event", {id : "me"}, true)
   .subscribeOnCompleted(function(){});
 
 ```
@@ -176,7 +155,7 @@ session.publishObservable("wamp.publish.event", {id : "me"}, true)
 
 ```javascript
 
-session.callObservable("wamp.my.add", 2, 3)
+session.callAsObservable("wamp.my.add", 2, 3)
   .subscribe(function(value){
     console.log("Result was %d", value);
   });
