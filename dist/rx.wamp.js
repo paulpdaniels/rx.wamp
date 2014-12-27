@@ -132,10 +132,10 @@ observableStatic.fromConnection = function (opts, keepReconnecting) {
  * Created by Paul on 12/24/2014.
  */
 
-observableStatic.fromPubSubPattern = function(session, topic, options, openObserver) {
+observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
 
     var observable = observableStatic.subscribeAsObservable(session, topic, options, openObserver);
-    var observer = Rx.Observer.create(function(value){
+    var observer = Rx.Observer.create(function (value) {
         observableStatic.publishAsObservable(session, topic, value.args || value.event, value.kwargs, value.options);
     });
 
@@ -147,39 +147,56 @@ observableStatic.fromPubSubPattern = function(session, topic, options, openObser
 observableStatic.subscribeAsObservable = function (session, topic, options, openObserver) {
     return observableStatic.create(function (obs) {
 
-        openObserver = openObserver || Rx.Observer.create();
+        var compositeDisposable = new CompositeDisposable();
 
         var disposable = new SerialDisposable();
 
         var handler = !_isV2Supported() ?
-            function(topic, event) {obs.onNext({topic : topic, event : event});} :
-            function(args, kwargs, details) {
-                obs.onNext({args: args, kwargs: kwargs, details: details});
+            function (topic, event) {
+                obs.onNext({topic: topic, event: event});
+            } :
+            function (args, kwargs, details) {
+
+                var next = {};
+                if (args) next.args = args;
+                if (kwargs) next.kwargs = kwargs;
+                if (details) next.details = details;
+
+                obs.onNext(next);
             };
 
         var subscription = session.subscribe(topic, handler, options);
 
         var innerUnsubscribe = subscription ?
-            function (sub) { session.unsubscribe(sub);} :
-            function (sub) { session.unsubscribe(sub.topic, sub.handler);};
+            function (sub) {
+                session.unsubscribe(sub);
+            } :
+            function (sub) {
+                session.unsubscribe(sub.topic, sub.handler);
+            };
 
 
         var subscribed = subscription ? observablePromise(subscription) :
             observableStatic.just({
-                topic : topic,
-                handler : handler
+                topic: topic,
+                handler: handler
             });
 
+        if (openObserver)
+            compositeDisposable.add(subscribed.subscribe(openObserver));
 
-        return new CompositeDisposable(
-            disposable,
-            subscribed.subscribe(openObserver),
-            subscribed
-                .subscribe(
-                function (subscription) {
-                    disposable.setDisposable(innerUnsubscribe.bind(session, subscription));
-                },
-                obs.onError.bind(obs)));
+
+        compositeDisposable.add(disposable);
+        compositeDisposable.add(subscribed.subscribe(
+            function (subscription) {
+                disposable.setDisposable(Disposable.create(innerUnsubscribe.bind(session, subscription)));
+            },
+            obs.onError.bind(obs))
+        );
+
+
+
+        return compositeDisposable;
     });
 };
 
@@ -204,7 +221,7 @@ observableStatic.registerAsObservable = function (session, procedure, endpoint, 
         return new CompositeDisposable(
             disposable,
             registered
-                .do(function(registration){
+                .do(function (registration) {
                     disposable.setDisposable(Disposable.create(innerUnregister.bind(null, registration)));
                 })
                 .subscribe(obs)
@@ -214,8 +231,8 @@ observableStatic.registerAsObservable = function (session, procedure, endpoint, 
 
 observableStatic.callAsObservable = function (session, procedure, options) {
     var args = [procedure];
-    return function() {
-        args = args.concat(arguments);
+    return function () {
+        args = args.concat(Array.prototype.slice.call(arguments));
         if (options) args.push(options);
         return observablePromise(session.call.apply(session, args));
     };

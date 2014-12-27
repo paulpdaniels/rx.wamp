@@ -118,36 +118,50 @@ describe('Wamp', function () {
         describe('#subscribeAsObservable', function () {
 
             it("should be able to subscribe to topics", function () {
-                Rx.Observable.subscribeAsObservable(mock_session.object, "wamp.io.test");
-            });
 
-            it("should be handle concatenation gracefully", function (done) {
-                var subscription = Rx.Observable
-                    .subscribeAsObservable(mock_session.object, "wamp.io.test2")
-                    .subscribe(function (value) {
-                        try {
-                            value.args[0].should.equal(1);
-                            value.args[1].should.equal(2);
-                        } catch (e) {
-                            done(e);
-                            return;
-                        }
-                        done();
-                    });
-            })
+                mock_session.expects("subscribe")
+                    .once()
+                    .withArgs(sinon.match("wamp.io.test"))
+                    .returns(testScheduler.createResolvedPromise(201, {}));
+
+                var openObserver = testScheduler.createObserver();
+                var results = testScheduler.startWithCreate(function () {
+
+                    var subject = new Rx.Subject();
+
+                    subject
+                        .do(function(){
+                            mock_session.expectations.subscribe[0].firstCall.args[1]([42], {key : "value"});
+                        })
+                        .subscribe(openObserver);
+
+                    return Rx.Observable.subscribeAsObservable(mock_session.object, "wamp.io.test", {}, subject)
+                });
+
+                openObserver.messages.should.eql([onNext(201, {}), onCompleted(201)]);
+                results.messages.should.eql([onNext(201, sample_data)]);
+                mock_session.verify();
+
+            });
         });
 
         describe("#registerAsObservable", function () {
 
             it('should be able to register for topics', function () {
 
-                var result = testScheduler.startWithCreate(function(){
+                mock_session.expects("register")
+                    .once()
+                    .withArgs(sinon.match("wamp.io.add"), sinon.match.func)
+                    .returns(testScheduler.createResolvedPromise(201, {}));
+
+                var result = testScheduler.startWithCreate(function () {
                     return Rx.Observable.registerAsObservable(mock_session.object, 'wamp.io.add', function (args, kwargs, options) {
                         return args[0] + args[1];
                     });
                 });
 
                 result.messages.should.eql([onNext(201, {}), onCompleted(201)]);
+                mock_session.verify();
 
             })
         });
@@ -162,8 +176,7 @@ describe('Wamp', function () {
                     .returns(testScheduler.createResolvedPromise(201, {}));
 
 
-
-                var result = testScheduler.startWithCreate(function() {
+                var result = testScheduler.startWithCreate(function () {
                     return Rx.Observable.publishAsObservable(mock_session.object, 'wamp.io.test', [1, 2], {test: "test"});
                 });
 
@@ -177,6 +190,10 @@ describe('Wamp', function () {
 
             it('should be able to call remote methods', function () {
 
+                mock_session.expects("call")
+                    .once()
+                    .withArgs(sinon.match("wamp.io.add"), sinon.match.array, sinon.match.object)
+                    .returns(testScheduler.createResolvedPromise(201, sample_data));
 
                 var result = testScheduler.startWithCreate(function () {
                     return Rx.Observable.callAsObservable(mock_session.object, "wamp.io.add")([1, 2], {});
@@ -184,6 +201,7 @@ describe('Wamp', function () {
 
                 result.messages.length.should.equal(2);
                 result.messages.should.eql([onNext(201, sample_data), onCompleted(201)]);
+                mock_session.verify();
             })
 
         });
