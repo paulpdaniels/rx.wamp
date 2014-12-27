@@ -184,7 +184,8 @@ observableStatic.subscribeAsObservable = function (session, topic, options, open
 };
 
 observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
-    var published = session.publish.apply(session, arguments);
+    //FIXME apparently we are not supposed to use the Array.prototype.slice work around to get values of the argument object
+    var published = session.publish.apply(session, Array.prototype.slice.call(arguments, 1));
     return published ? observablePromise(published) : observableEmpty();
 };
 

@@ -156,12 +156,19 @@ describe('Wamp', function () {
 
             it('should be able to publish to topics', function () {
 
+                mock_session.expects("publish")
+                    .once()
+                    .withArgs(sinon.match('wamp.io.test'), sinon.match.array, sinon.match.object)
+                    .returns(testScheduler.createResolvedPromise(201, {}));
+
+
+
                 var result = testScheduler.startWithCreate(function() {
                     return Rx.Observable.publishAsObservable(mock_session.object, 'wamp.io.test', [1, 2], {test: "test"});
                 });
 
                 result.messages.should.eql([onNext(201, {}), onCompleted(201)]);
-
+                mock_session.verify();
             });
 
         });
