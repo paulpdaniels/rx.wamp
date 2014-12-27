@@ -10,25 +10,28 @@ var autobahn = require('autobahn');
 var sinon = require('sinon');
 var asPromised = require('sinon-as-promised');
 
+
+var onNext = Rx.ReactiveTest.onNext,
+    onCompleted = Rx.ReactiveTest.onCompleted,
+    onError = Rx.ReactiveTest.onError;
+
 describe('Wamp', function () {
 
-
-
-    describe('#connectObservable', function () {
+    describe('#fromConnection', function () {
 
         var connector;
         var mock_session;
         var stub_connection;
 
-        before(function() {
+        before(function () {
             mock_session = sinon.stub();
 
-            stub_connection = sinon.stub(autobahn.Connection.prototype, "open", function(){
+            stub_connection = sinon.stub(autobahn.Connection.prototype, "open", function () {
                 this.onopen(mock_session);
             });
         });
 
-        afterEach(function(){
+        afterEach(function () {
             stub_connection.restore();
         });
 
@@ -73,38 +76,40 @@ describe('Wamp', function () {
 
     });
 
-    describe(".clients", function () {
+    describe(".Session", function () {
 
         var client;
-        var testScheduler = new Rx.TestScheduler();
-        var mock_session, mock_subscription, mock_registration, mock_publish;
-        var sample_data = {args : [42], kwargs : {key : 'value'}};
+        var testScheduler;
+        var mock_session, mock_subscription, mock_registration, mock_publish, mock_call;
+        var sample_data = {args: [42], kwargs: {key: 'value'}};
 
         beforeEach(function () {
 
             mock_subscription = sinon.stub().resolves({});
             mock_registration = sinon.stub().resolves({});
             mock_publish = sinon.stub().resolves({});
+            mock_call = sinon.stub().resolves(sample_data);
+            testScheduler = new Rx.TestScheduler();
 
-             mock_session = sinon.mock({
-                subscribe : function(topic, handler, options){
-                    handler([1, 2], {key : "value"});
-                    return mock_subscription();
+            mock_session = sinon.mock({
+                subscribe: function (topic, handler, options) {
+                    handler([1, 2], {key: "value"});
+                    return testScheduler.createResolvedPromise(201, {});
                 },
-                unsubscribe : function(){
+                unsubscribe: function () {
 
                 },
-                 publish : function(){
-                     return mock_publish();
-                 },
-                 register : function(){
-                     return mock_registration();
-                 },
-                 unregister : function() {
-                 },
-                 call : function() {
-                     return sinon.stub().resolves(sample_data)();
-                 }
+                publish: function () {
+                    return testScheduler.createResolvedPromise(201, {});
+                },
+                register: function () {
+                    return testScheduler.createResolvedPromise(201, {});
+                },
+                unregister: function () {
+                },
+                call: function () {
+                    return testScheduler.createResolvedPromise(201, sample_data);
+                }
             });
 
 
@@ -135,48 +140,56 @@ describe('Wamp', function () {
         describe("#registerAsObservable", function () {
 
             it('should be able to register for topics', function () {
-                Rx.Observable.registerAsObservable(mock_session.object, 'wamp.io.add', function (args, kwargs, options) {
-                    return args[0] + args[1];
-                }).subscribe(function () {
 
+                var result = testScheduler.startWithCreate(function(){
+                    return Rx.Observable.registerAsObservable(mock_session.object, 'wamp.io.add', function (args, kwargs, options) {
+                        return args[0] + args[1];
+                    });
                 });
+
+                result.messages.should.eql([onNext(201, {}), onCompleted(201)]);
+
             })
         });
 
         describe("#publishObservable", function () {
 
-            it('should be able to publish to topics', function (done) {
-                Rx.Observable.publishAsObservable(mock_session.object, 'wamp.io.test', [1, 2], {test: "test"})
-                    .subscribe(function(){done();});
+            it('should be able to publish to topics', function () {
+
+                var result = testScheduler.startWithCreate(function() {
+                    return Rx.Observable.publishAsObservable(mock_session.object, 'wamp.io.test', [1, 2], {test: "test"});
+                });
+
+                result.messages.should.eql([onNext(201, {}), onCompleted(201)]);
+
             });
 
         });
 
         describe("#callAsObservable", function () {
 
-            it('should be able to call remote methods', function (done) {
+            it('should be able to call remote methods', function () {
 
-                var caller = Rx.Observable.callAsObservable(mock_session.object, "wamp.io.add");
 
-                caller([1, 2], {})
-                    .subscribe(function (value) {
-                        value.args[0].should.equal(42);
-                        done();
-                    }, done);
+                var result = testScheduler.startWithCreate(function () {
+                    return Rx.Observable.callAsObservable(mock_session.object, "wamp.io.add")([1, 2], {});
+                });
 
+                result.messages.length.should.equal(2);
+                result.messages.should.eql([onNext(201, sample_data), onCompleted(201)]);
             })
 
         });
 
         describe("#advanced", function () {
 
-            it("should handle pipelined actions", function (done) {
+            it("should handle pipelined actions", function () {
 
-                var adder = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.add");
-                var multiplier = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.multiply");
+                var result = testScheduler.startWithCreate(function () {
+                    var adder = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.add");
+                    var multiplier = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.multiply");
 
-                var pipeline =
-                    Rx.Observable.zip(adder([2, 3]), adder([3, 4]),
+                    return Rx.Observable.zip(adder([2, 3]), adder([3, 4]),
                         function (value1, value2) {
                             return [value1, value2];
                         })
@@ -184,15 +197,19 @@ describe('Wamp', function () {
                         .flatMap(function (value) {
                             return multiplier(value);
                         });
+                });
 
-                pipeline.subscribe(function (value) {
-                    try {
-                        value.should.equal(sample_data);
-                        done();
-                    } catch (e) {
-                        done(e);
-                    }
-                }, done)
+                result.messages.length.should.equal(2);
+
+                //
+                //pipeline.subscribe(function (value) {
+                //    try {
+                //        value.should.equal(sample_data);
+                //        done();
+                //    } catch (e) {
+                //        done(e);
+                //    }
+                //}, done)
             });
 
         })

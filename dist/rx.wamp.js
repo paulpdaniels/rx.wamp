@@ -202,9 +202,11 @@ observableStatic.registerAsObservable = function (session, procedure, endpoint, 
 
         return new CompositeDisposable(
             disposable,
-            registered.subscribe(function (registration) {
-                disposable.setDisposable(innerUnregister.bind(registration));
-            })
+            registered
+                .do(function(registration){
+                    disposable.setDisposable(Disposable.create(innerUnregister.bind(null, registration)));
+                })
+                .subscribe(obs)
         );
     });
 };
