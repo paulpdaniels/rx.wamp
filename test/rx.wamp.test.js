@@ -21,13 +21,35 @@ describe('Wamp', function () {
 
         var connector;
         var mock_session;
+        var mock_connection;
         var stub_connection;
+        var testScheduler;
 
         before(function () {
-            mock_session = sinon.stub();
+            mock_session = sinon.mock({
+                close: function () {
+                }
+            });
+
+            mock_connection = sinon.mock({
+                open: function () {
+                    this.onopen(mock_session.object);
+                },
+                close: function () {
+                    this.onclose();
+                },
+                onopen: null,
+                onclose: null
+            });
 
             stub_connection = sinon.stub(autobahn.Connection.prototype, "open", function () {
                 this.onopen(mock_session);
+            });
+
+            connector = Rx.Observable.fromConnection({
+                url: 'ws://localhost:9000', realm: 'realm1'
+            }, null, function () {
+                return mock_connection.object;
             });
         });
 
@@ -36,59 +58,58 @@ describe('Wamp', function () {
         });
 
         beforeEach(function () {
-            connector = Rx.Observable.fromConnection({
-                url: 'ws://localhost:9000', realm: 'realm1'
-            });
+
+            mock_connection.restore();
+
+            testScheduler = new Rx.TestScheduler();
         });
 
-        it('should return a new session object onNext', function (done) {
+        it('should return a new session object onNext', function () {
 
-            connector
-                .subscribe(function (session) {
-                    session.should.equal(mock_session);
-                    done();
-                },
-                done);
-        });
-
-        it('should not raise onComplete when unsubscribed', function () {
-
-            var subscription = connector.subscribeOnCompleted(function () {
-                fail();
+            var results = testScheduler.startWithCreate(function () {
+                return connector;
             });
 
-            subscription.dispose();
-
-
+            results.messages.should.eql([onNext(200, mock_session.object)]);
         });
 
-        it('should propagate an exception if a connection cannot be established', function (done) {
 
-            Rx.Observable.fromConnection({url: "ws://localhost:9001", realm: 'realm1'})
-                .subscribe(function () {
-                    done(new Error("No return value expected"));
-                }, function (e) {
-                    done();
-                }, function () {
-                    done(new Error("should not complete"));
-                });
+        it('should disconnect session on unsubscribe', function () {
+
+            mock_connection.expects("close").once();
+
+            var result = testScheduler.startWithCreate(function () {
+                return connector;
+            });
+
+            mock_connection.verify();
+        });
+
+
+        it('should propagate an exception if a connection cannot be established', function () {
+
+            var error = new Error();
+            sinon.stub(mock_connection.object, "open").throws(error);
+
+            var result = testScheduler.startWithCreate(function () {
+                return connector;
+            });
+
+            result.messages.should.eql([onError(200, error)]);
+
+
         });
 
     });
 
     describe(".Session", function () {
 
-        var client;
         var testScheduler;
-        var mock_session, mock_subscription, mock_registration, mock_publish, mock_call;
+        var mock_session;
         var sample_data = {args: [42], kwargs: {key: 'value'}};
 
         beforeEach(function () {
 
-            mock_subscription = sinon.stub().resolves({});
-            mock_registration = sinon.stub().resolves({});
-            mock_publish = sinon.stub().resolves({});
-            mock_call = sinon.stub().resolves(sample_data);
             testScheduler = new Rx.TestScheduler();
 
             mock_session = sinon.mock({
@@ -130,8 +151,8 @@ describe('Wamp', function () {
                     var subject = new Rx.Subject();
 
                     subject
-                        .do(function(){
-                            mock_session.expectations.subscribe[0].firstCall.args[1]([42], {key : "value"});
+                        .do(function () {
+                            mock_session.expectations.subscribe[0].firstCall.args[1]([42], {key: "value"});
                         })
                         .subscribe(openObserver);
 
@@ -210,31 +231,30 @@ describe('Wamp', function () {
 
             it("should handle pipelined actions", function () {
 
-                var result = testScheduler.startWithCreate(function () {
-                    var adder = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.add");
-                    var multiplier = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.multiply");
+                mock_session
+                    .expects("call")
+                    .thrice()
+                    .onFirstCall().returns(testScheduler.createResolvedPromise(203, 5))
+                    .onSecondCall().returns(testScheduler.createResolvedPromise(203, 7))
+                    .onThirdCall().returns(testScheduler.createResolvedPromise(203, 35));
 
-                    return Rx.Observable.zip(adder([2, 3]), adder([3, 4]),
+                var result = testScheduler.startWithCreate(function () {
+                    var add = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.add");
+                    var multiply = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.multiply");
+
+                    return Rx.Observable.zip(add([2, 3]), add([3, 4]),
                         function (value1, value2) {
                             return [value1, value2];
                         })
 
                         .flatMap(function (value) {
-                            return multiplier(value);
+                            return multiply(value);
                         });
                 });
 
-                result.messages.length.should.equal(2);
+                mock_session.verify();
+                result.messages.should.eql([onNext(203, 35), onCompleted(203)]);
 
-                //
-                //pipeline.subscribe(function (value) {
-                //    try {
-                //        value.should.equal(sample_data);
-                //        done();
-                //    } catch (e) {
-                //        done(e);
-                //    }
-                //}, done)
             });
 
         })

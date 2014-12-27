@@ -49,7 +49,40 @@ var _isV2Supported = function() {
  * Created by Paul on 12/24/2014.
  */
 
-observableStatic.fromConnection = function (opts, keepReconnecting) {
+function _connection_factory(opts) {
+
+    return new (autobahn.Connection || function (opts) {
+
+        this.uri = opts.uri;
+
+        var disposable = new SerialDisposable();
+
+
+        this._onopen = function (session) {
+
+            disposable.setDisposable(function () {
+                session.close();
+            });
+
+            if (!disposable.isDisposed && this.onopen)
+                this.onopen(session);
+        };
+
+        this.open = function () {
+            autobahn.connect(this.uri, this._onopen, this.onclose, opts);
+        };
+
+        this.close = function () {
+            disposable.dispose();
+        };
+
+        this.onopen = null;
+        this.onclose = null;
+
+    })(opts);
+}
+
+observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 
     var isV2Supported = _isV2Supported();
 
@@ -57,37 +90,7 @@ observableStatic.fromConnection = function (opts, keepReconnecting) {
     var CONNECTION_UNREACHABLE = autobahn.CONNECTION_UNREACHABLE || "unreachable";
     var CONNECTION_LOST = autobahn.CONNECTION_LOST || "lost";
 
-    var Connection = autobahn.Connection || function (opts) {
-
-            this.uri = opts.uri;
-
-            var disposable = new SerialDisposable();
-
-
-            this._onopen = function (session) {
-
-                disposable.setDisposable(function () {
-                    session.close();
-                });
-
-                if (!disposable.isDisposed && this.onopen)
-                    this.onopen(session);
-            };
-
-            this.open = function () {
-                autobahn.connect(this.uri, this._onopen, this.onclose, opts);
-            };
-
-            this.close = function () {
-                disposable.dispose();
-            };
-
-            this.onopen = null;
-            this.onclose = null;
-
-        };
-
-    var connection = new Connection(opts);
+    var connection = (factory || _connection_factory)(opts);
 
     return observableStatic.create(function (obs) {
 
