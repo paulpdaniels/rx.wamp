@@ -2,24 +2,36 @@
  * Created by Paul on 12/24/2014.
  */
 
-sessionProto.subscribeAsObservable = function (topic, options) {
-    var self = this;
+observableStatic.fromPubSubPattern = function(session, topic, options, openObserver) {
 
+    var observable = observableStatic.subscribeAsObservable(session, topic, options, openObserver);
+    var observer = Rx.Observer.create(function(value){
+        observableStatic.publishAsObservable(session, topic, value.args || value.event, value.kwargs, value.options);
+    });
+
+    return Subject.create(observer, observable);
+
+};
+
+
+observableStatic.subscribeAsObservable = function (session, topic, options, openObserver) {
     return observableStatic.create(function (obs) {
+
+        openObserver = openObserver || Rx.Observer.create();
 
         var disposable = new SerialDisposable();
 
-        var handler = isV2Supported ?
+        var handler = !_isV2Supported() ?
             function(topic, event) {obs.onNext({topic : topic, event : event});} :
             function(args, kwargs, details) {
                 obs.onNext({args: args, kwargs: kwargs, details: details});
             };
 
-        var subscription = self.subscribe(topic, handler, options);
+        var subscription = session.subscribe(topic, handler, options);
 
         var innerUnsubscribe = subscription ?
-            function (sub) { self.unsubscribe(sub);} :
-            function (sub) { self.unsubscribe(sub.topic, sub.handler);};
+            function (sub) { session.unsubscribe(sub);} :
+            function (sub) { session.unsubscribe(sub.topic, sub.handler);};
 
 
         var subscribed = subscription ? observablePromise(subscription) :
@@ -28,35 +40,35 @@ sessionProto.subscribeAsObservable = function (topic, options) {
                 handler : handler
             });
 
+
         return new CompositeDisposable(
             disposable,
+            subscribed.subscribe(openObserver),
             subscribed
                 .subscribe(
                 function (subscription) {
-                    disposable.setDisposable(innerUnsubscribe.bind(self, subscription));
+                    disposable.setDisposable(innerUnsubscribe.bind(session, subscription));
                 },
                 obs.onError.bind(obs)));
     });
 };
 
-sessionProto.publishAsObservable = function (topic, args, kwargs, options) {
-    var published = this.publish.apply(this, arguments);
+observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
+    var published = session.publish.apply(session, arguments);
     return published ? observablePromise(published) : observableEmpty();
 };
 
-sessionProto.registerAsObservable = function (procedure, endpoint, options) {
-
-    var self = this;
+observableStatic.registerAsObservable = function (session, procedure, endpoint, options) {
 
     function innerUnregister(registration) {
-        self.unregister(registration);
+        session.unregister(registration);
     }
 
     return observableStatic.create(function (obs) {
 
         var disposable = new SerialDisposable();
 
-        var registered = observablePromise(self.register(procedure, endpoint, options));
+        var registered = observablePromise(session.register(procedure, endpoint, options));
 
         return new CompositeDisposable(
             disposable,
@@ -67,12 +79,11 @@ sessionProto.registerAsObservable = function (procedure, endpoint, options) {
     });
 };
 
-sessionProto.callAsObservable = function (procedure, options) {
-    var self = this;
+observableStatic.callAsObservable = function (session, procedure, options) {
     var args = [procedure];
     return function() {
         args = args.concat(arguments);
         if (options) args.push(options);
-        return observablePromise(self.call.apply(self, args));
+        return observablePromise(session.call.apply(session, args));
     };
 };

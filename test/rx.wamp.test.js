@@ -8,27 +8,29 @@ var chai = require('chai');
 var should = chai.should();
 var autobahn = require('autobahn');
 var sinon = require('sinon');
+var asPromised = require('sinon-as-promised');
 
 describe('Wamp', function () {
 
-    var router;
-    var connector;
-    var mock_session;
-    var stub_connection;
 
-    before(function() {
-        mock_session = sinon.stub();
-
-        stub_connection = sinon.stub(autobahn.Connection.prototype, "open", function(){
-            this.onopen(mock_session);
-        });
-    });
-
-    afterEach(function(){
-        stub_connection.restore();
-    });
 
     describe('#connectObservable', function () {
+
+        var connector;
+        var mock_session;
+        var stub_connection;
+
+        before(function() {
+            mock_session = sinon.stub();
+
+            stub_connection = sinon.stub(autobahn.Connection.prototype, "open", function(){
+                this.onopen(mock_session);
+            });
+        });
+
+        afterEach(function(){
+            stub_connection.restore();
+        });
 
         beforeEach(function () {
             connector = Rx.Observable.fromConnection({
@@ -74,35 +76,49 @@ describe('Wamp', function () {
     describe(".clients", function () {
 
         var client;
-        var sessionSubject = new Rx.BehaviorSubject();
         var testScheduler = new Rx.TestScheduler();
+        var mock_session, mock_subscription, mock_registration, mock_publish;
+        var sample_data = {args : [42], kwargs : {key : 'value'}};
 
         beforeEach(function () {
 
-            var stub_socket = sinon.stub();
-            var stub_defer = sinon.stub();
+            mock_subscription = sinon.stub().resolves({});
+            mock_registration = sinon.stub().resolves({});
+            mock_publish = sinon.stub().resolves({});
 
-            new autobahn.Session(stub_socket, stub_defer);
+             mock_session = sinon.mock({
+                subscribe : function(topic, handler, options){
+                    handler([1, 2], {key : "value"});
+                    return mock_subscription();
+                },
+                unsubscribe : function(){
+
+                },
+                 publish : function(){
+                     return mock_publish();
+                 },
+                 register : function(){
+                     return mock_registration();
+                 },
+                 unregister : function() {
+                 },
+                 call : function() {
+                     return sinon.stub().resolves(sample_data)();
+                 }
+            });
+
 
         });
 
         describe('#subscribeAsObservable', function () {
 
             it("should be able to subscribe to topics", function () {
-
-
-
-                //sessionSubject.subscribe(function(session) {
-                //    session.subscribeAsObservable("wamp.io.test");
-                //    done();
-                //});
-
+                Rx.Observable.subscribeAsObservable(mock_session.object, "wamp.io.test");
             });
 
             it("should be handle concatenation gracefully", function (done) {
-                var subscription = client
-                    .subscribeAsObservable("wamp.io.test2")
-                    .concatAll()
+                var subscription = Rx.Observable
+                    .subscribeAsObservable(mock_session.object, "wamp.io.test2")
                     .subscribe(function (value) {
                         try {
                             value.args[0].should.equal(1);
@@ -111,9 +127,6 @@ describe('Wamp', function () {
                             done(e);
                             return;
                         }
-
-                        subscription.dispose();
-
                         done();
                     });
             })
@@ -121,8 +134,8 @@ describe('Wamp', function () {
 
         describe("#registerAsObservable", function () {
 
-            it('should be able to register for topics', function (done) {
-                client.registerAsObservable('wamp.io.add', function (args, kwargs, options) {
+            it('should be able to register for topics', function () {
+                Rx.Observable.registerAsObservable(mock_session.object, 'wamp.io.add', function (args, kwargs, options) {
                     return args[0] + args[1];
                 }).subscribe(function () {
 
@@ -133,7 +146,8 @@ describe('Wamp', function () {
         describe("#publishObservable", function () {
 
             it('should be able to publish to topics', function (done) {
-                client.publishAsObservable('wamp.io.test', [1, 2], {test: "test"});
+                Rx.Observable.publishAsObservable(mock_session.object, 'wamp.io.test', [1, 2], {test: "test"})
+                    .subscribe(function(){done();});
             });
 
         });
@@ -142,11 +156,11 @@ describe('Wamp', function () {
 
             it('should be able to call remote methods', function (done) {
 
-                var caller = client.callAsObservable("wamp.io.add");
+                var caller = Rx.Observable.callAsObservable(mock_session.object, "wamp.io.add");
 
                 caller([1, 2], {})
                     .subscribe(function (value) {
-                        value.args[0].should.equal(3);
+                        value.args[0].should.equal(42);
                         done();
                     }, done);
 
@@ -158,8 +172,8 @@ describe('Wamp', function () {
 
             it("should handle pipelined actions", function (done) {
 
-                var adder = client.callAsObservable("wamp.my.add");
-                var multiplier = client.callAsObservable("wamp.my.multiply");
+                var adder = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.add");
+                var multiplier = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.multiply");
 
                 var pipeline =
                     Rx.Observable.zip(adder([2, 3]), adder([3, 4]),
@@ -173,14 +187,12 @@ describe('Wamp', function () {
 
                 pipeline.subscribe(function (value) {
                     try {
-                        value.should.equal(35);
+                        value.should.equal(sample_data);
                         done();
                     } catch (e) {
                         done(e);
                     }
                 }, done)
-
-
             });
 
         })
