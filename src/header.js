@@ -6,4 +6,5 @@ var observableStatic = Rx.Observable,
     Disposable = Rx.Disposable,
     CompositeDisposable = Rx.CompositeDisposable,
     SerialDisposable = Rx.SerialDisposable,
+    autobahn = autobahn || ab,
     sessionProto = autobahn.Session.prototype;

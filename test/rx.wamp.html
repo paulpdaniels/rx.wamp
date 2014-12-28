@@ -1,12 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head lang="en">
-    <meta charset="UTF-8">
-    <title>Reactive Extensions for Wamp Tests</title>
+<head>
+    <meta charset="utf-8">
+    <title>Cow tests</title>
+    <link rel="stylesheet" media="all" href="../node_modules/mocha/mocha.css">
 </head>
 <body>
-
-<div id="qunit"></div>
-
+<div id="mocha"><p><a href=".">Index</a></p></div>
+<div id="messages"></div>
+<div id="fixtures"></div>
+<script src="../node_modules/mocha/mocha.js"></script>
+<script src="../node_modules/chai/chai.js"></script>
+<script src="../node_modules/rx/dist/rx.all.js"></script>
+<script>
+    var module = {};
+    var require = function(){};
+</script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/when/2.7.1/when.js"></script>
+<script>
+    window.when = module.exports;
+</script>
+<script src="../src/autobahn_v1.js"></script>
+<script src="../dist/rx.wamp.js"></script>
+<script>mocha.setup('bdd')</script>
+<script src="browser/rx.wamp.test.js"></script>
+<script>mocha.run();</script>
 </body>
 </html>

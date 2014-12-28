@@ -11,16 +11,16 @@ autobahn._connection_cls = autobahn.Connection || function (opts) {
 
     this._onopen = function (session) {
 
-        disposable.setDisposable(function () {
+        disposable.setDisposable(Disposable.create(function () {
             session.close();
-        });
+        }));
 
         if (!disposable.isDisposed && this.onopen)
             this.onopen(session);
     };
 
     this.open = function () {
-        autobahn.connect(this.uri, this._onopen, this.onclose, opts);
+        autobahn.connect(this.uri, this._onopen.bind(this), this.onclose, opts);
     };
 
     this.close = function () {
@@ -33,7 +33,7 @@ autobahn._connection_cls = autobahn.Connection || function (opts) {
 };
 
 function _connection_factory(opts) {
-    return new autobahn._connection_cls()(opts);
+    return new autobahn._connection_cls(opts);
 }
 
 observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
