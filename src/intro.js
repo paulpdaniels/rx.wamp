@@ -21,11 +21,16 @@
     // Because of build optimizers
     if (typeof define === 'function' && define.amd) {
         define(['rx', 'autobahn', 'exports'], function (Rx, autobahn, exports) {
-            root.Rx = factory(root, exports, Rx);
+            root.Rx = factory(root, exports, Rx, autobahn);
             return root.Rx;
         });
     } else if (typeof module === 'object' && module && module.exports === freeExports) {
-        module.exports = factory(root, module.exports, require('rx'), require('autobahn'));
+        module.exports = function(wamp){
+            if (!wamp)
+                wamp = require('autobahn');
+
+            return factory(root, module.exports, require('rx'), wamp);
+        }
     } else {
         root.Rx = factory(root, {}, root.Rx, root.autobahn);
     }

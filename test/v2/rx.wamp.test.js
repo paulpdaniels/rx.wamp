@@ -2,11 +2,10 @@
  * Created by Paul on 10/13/2014.
  */
 
-var Rx = require('rx');
-var wamp = require('../index');
 var chai = require('chai');
 var should = chai.should();
 var autobahn = require('autobahn');
+var Rx = Object.create(require('../../index')(autobahn));
 var sinon = require('sinon');
 var asPromised = require('sinon-as-promised');
 
@@ -15,7 +14,7 @@ var onNext = Rx.ReactiveTest.onNext,
     onCompleted = Rx.ReactiveTest.onCompleted,
     onError = Rx.ReactiveTest.onError;
 
-describe('Wamp', function () {
+describe('V2', function () {
 
     describe('#fromConnection', function () {
 

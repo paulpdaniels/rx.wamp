@@ -21,11 +21,16 @@
     // Because of build optimizers
     if (typeof define === 'function' && define.amd) {
         define(['rx', 'autobahn', 'exports'], function (Rx, autobahn, exports) {
-            root.Rx = factory(root, exports, Rx);
+            root.Rx = factory(root, exports, Rx, autobahn);
             return root.Rx;
         });
     } else if (typeof module === 'object' && module && module.exports === freeExports) {
-        module.exports = factory(root, module.exports, require('rx'), require('autobahn'));
+        module.exports = function(wamp){
+            if (!wamp)
+                wamp = require('autobahn');
+
+            return factory(root, module.exports, require('rx'), wamp);
+        }
     } else {
         root.Rx = factory(root, {}, root.Rx, root.autobahn);
     }
@@ -43,43 +48,44 @@ var observableStatic = Rx.Observable,
     sessionProto = autobahn.Session.prototype;
 
 var _isV2Supported = function() {
-    return autobahn.version !== "?.?.?" && !!autobahn.Connection;
+    return typeof autobahn.version !== 'function' || autobahn.version() !== "?.?.?" && !!autobahn.Connection;
 };
 /**
  * Created by Paul on 12/24/2014.
  */
 
+
+autobahn._connection_cls = autobahn.Connection || function (opts) {
+
+    this.uri = typeof opts === 'object' ? opts.url : opts;
+
+    var disposable = new SerialDisposable();
+
+    this._onopen = function (session) {
+
+        disposable.setDisposable(function () {
+            session.close();
+        });
+
+        if (!disposable.isDisposed && this.onopen)
+            this.onopen(session);
+    };
+
+    this.open = function () {
+        autobahn.connect(this.uri, this._onopen, this.onclose, opts);
+    };
+
+    this.close = function () {
+        disposable.dispose();
+    };
+
+    this.onopen = null;
+    this.onclose = null;
+
+};
+
 function _connection_factory(opts) {
-
-    return new (autobahn.Connection || function (opts) {
-
-        this.uri = opts.uri;
-
-        var disposable = new SerialDisposable();
-
-
-        this._onopen = function (session) {
-
-            disposable.setDisposable(function () {
-                session.close();
-            });
-
-            if (!disposable.isDisposed && this.onopen)
-                this.onopen(session);
-        };
-
-        this.open = function () {
-            autobahn.connect(this.uri, this._onopen, this.onclose, opts);
-        };
-
-        this.close = function () {
-            disposable.dispose();
-        };
-
-        this.onopen = null;
-        this.onclose = null;
-
-    })(opts);
+    return new autobahn._connection_cls()(opts);
 }
 
 observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
@@ -109,7 +115,7 @@ observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
                     obs.onError({reason: reason, details: details, code: code});
                     break;
                 case CONNECTION_LOST:
-                    if(!keepReconnecting.isDisposed)
+                    if (!keepReconnecting.isDisposed)
                         return true;
                     else
                         obs.onCompleted();
