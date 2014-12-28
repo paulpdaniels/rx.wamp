@@ -1,6 +1,6 @@
 {
   "name": "rx.wamp",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "A wrapper library for the autobahn wamp v1/v2 library in the browser/node",
   "main": "index.js",
   "directories": {
@@ -26,7 +26,6 @@
     "url": "https://github.com/paulpdaniels/rx.wamp/issues"
   },
   "devDependencies": {
-    "qunitjs": "~1.15.0",
     "wamp.rt": "~0.1.2",
     "chai": "~1.9.2",
     "grunt": "^0.4.5",
@@ -34,7 +33,6 @@
     "grunt-contrib-uglify": "^0.7.0",
     "mocha": "^2.1.0",
     "sinon": "^1.12.2",
-    "mocha-sinon": "^1.1.4",
     "sinon-as-promised": "^2.0.3",
     "when": "^3.6.4",
     "wamp.io-mirror": "^0.1.4"
