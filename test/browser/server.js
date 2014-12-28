@@ -13,3 +13,12 @@ server.on('clientconnected', function(){
 server.on('clientdisconnected', function(){
     console.log("client disconnected");
 });
+
+server.on('call', function(proc, args, cb){
+
+    if (proc === "test.add.procedure")
+        cb(null, args[0] + args[1]);
+    else
+        cb(new Error("no existing method"));
+
+});
