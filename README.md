@@ -3,6 +3,8 @@ rx.wamp
 
 A Reactive wrapper library for the autobahn wamp v1/v2 library in the browser/node
 
+*If you have been using below version 0.2.0 please see below for important API changes!*
+
 
 ### Installation
 
@@ -10,6 +12,8 @@ A Reactive wrapper library for the autobahn wamp v1/v2 library in the browser/no
 #### Regular browser
 ```javascript
 
+<script type="application/javascript" src="javascripts/lib/autobahn.js"></script>
+<script type="application/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/2.3.22/rx.lite.js"></script>
 <script type="application/javascript" src="javascripts/rx.wamp.js" ></script>
 
 ```
@@ -33,9 +37,9 @@ var rxwamp = require('rx.wamp');
 
 
 //Do stuff with the autobahn
-autobahn
-  .connectObservable({url: 'ws://localhost:9000', realm: 'realm1'});
-
+//This works for both versions, though realm is only required in version 2
+Rx.Observable
+  .fromConnection({url: 'ws://localhost:9000', realm: 'realm1'});
 
 ```
 
@@ -79,12 +83,28 @@ topicObservable
   .map(getResultValue)
   .subscribe(console.log);
     
-//Unsubscribe from topic
+//Unsubscribe from topic, you will no longer receive updates from this topic
 topicSubscription.dispose();
 
 ```
 
+### Publishing to topic
+
+```javascript
+
+//Version 2
+var published = Rx.Observable.publishAsObservable(session, "wamp.my.foo", [42], {key : "value"}, {});
+
+//Version 1 - Overloads
+Rx.Observable.publishAsObservable(session, "wamp.my.foo", { args : [42], kwargs : { key : "value" } }, true);
+Rx.Observable.publishAsObservable(session, "wamp.my.foo", { args : [42], kwargs : { key : "value" } }, [12345678]);
+Rx.Observable.publishAsObservable(session, "wamp.my.foo", { args : [42], kwargs : { key : "value" } }, [12345678], [87654321]);
+
+
+```
+
 ### Registering methods
+#### Note that this will only work in version 2
 ```javascript
 
 function endpoint(args, kwargs, details) {
@@ -102,8 +122,8 @@ function onError(e) {
 }
 
 var registration = 
-  session
-    .registerObservable("wamp.my.add", endpoint, {})
+  Rx.Observable
+    .registerAsObservable(session, "wamp.my.add", endpoint, {})
     //This will bubble up all errors that occur either
     //during registration or unregistration.
     .subscribeOnError(onError);
@@ -122,31 +142,81 @@ We can call methods, like the one in the example above, as well.
 
 ```javascript
 
-session.callAsObservable("wamp.my.add", [2, 3], {}, {})
+var caller = session.callAsObservable("wamp.my.add", {});
+
+//Version 2
+caller([2, 3], {})
     .subscribe(function(value){
       // => 5
       console.log("Result was %s", value.args[0]);
     });
-    
-//Shorthand
-var add = session.caller("wamp.my.add");
 
-var addResult = add([2, 3]);
-
+//Resubscribing will yield the cached result
 addResult.subscribe(function(value) {
-  // => 5
-  console.log("Result was the same %d", value.args[0]);
+      console.log("Result was %s", value.args[0]);
 });
 
-//Subscribe as many times as possible
-addResult.subscribe(function(value) {});
-
+//Version 1
+caller(2, 3)
+  .subscribe(function(value) {});
 
 ```
 
 ### Advanced
 
+
+
 ```javascript
+
+//Some readings
+var sensorReadings = Rx.Observable.subscribeAsObservable(session, "weather.sensor");
+var analyzer = Rx.Observable.callAsObservable(session, "weather.forecast.compute");
+
+//Home control settings
+var desiredTemperature = Rx.Observable.subscribeAsObservable(session, "temperature.indoors.desired");
+
+var dailyForecast = 
+sensorReadings
+  .map(function(rawValue){
+    //Some compatibility so we can transparently use between versions
+    return rawValue.kwargs || rawValue.event;
+  })
+  .throttleFirst(1000) // At most once every second
+  .bufferWithTime(1000 * 60 * 60 * 24) //Milliseconds in a day
+  .tap(function(reading) {
+    //Send these off to our visualizer somewhere on the network
+    Rx.Observable.publishAsObservable(session, "weather.visualizer.daily", readings);
+  })
+  .flatMap(function(readings) {
+    return analyzer(readings);
+  })
+  .publish().refCount();
+
+//Warn of inclement weather coming in  
+dailyForecast
+  .filter(function(weather) {
+    return weather.warnings.length > 0;
+  })
+  .map(function(weather) {
+    var warning = weather.warnings[0];
+    return {type : warning.type, severity : severity};
+  })
+  .subscribe(Rx.Observable.publishAsObservable.bind(null, session, "weather.warnings.klaxon"));
+  
+//Notify the climate control to turn off
+dailyForecast
+  .map(function(weather) {
+    return weather.temperature.average;
+  })
+  .combineLatest(desiredTemperature, function(actual, desired) {
+    return Math.abs(desired - actual);
+  })
+  .map(function(difference) {
+    return {state : difference > 4};
+  })
+  .subscribe(Rx.Observable.publishAsObservable.bind(null, session, "indoor.climatecontrol.active"));
+  
+
 
 //Create a pipeline of distributed computation
 var adder = session.caller("wamp.my.add");
@@ -169,50 +239,6 @@ var pipeline =
 
 
 ```
-
-## V1
-
-It also supports the v1 library.
-
-
-### Subscribing
-
-```javascript
-
-//Notice the difference between this and v2
-session.subscribeAsObservable("wamp.subscribe.event")
-  .subscribe(function(event) {
-    console.log("New event: %s", event);
-  });
-
-```
-
-### Publishing
-
-```javascript
-
-session.publishAsObservable("wamp.publish.event", {id : "me"}, true)
-  .subscribeOnCompleted(function(){});
-
-```
-
-### Calling methods
-
-```javascript
-
-session.callAsObservable("wamp.my.add", 2, 3)
-  .subscribe(function(value){
-    console.log("Result was %d", value);
-  });
-  
-  
-
-```
-
-
-
-
-
 
 ###TODO
 
