@@ -103,6 +103,36 @@ Rx.Observable.publishAsObservable(session, "wamp.my.foo", { args : [42], kwargs 
 
 ```
 
+### Or use them together
+```javascript
+
+//Surfaces a subject which can do both publication and subscription
+var topic = Rx.Observable.fromPubSubPattern(session, "wamp.pubsub.topic", {});
+
+//When the topic successfully subscribes it is surfaced through the 'opened' property
+topic.opened.subscribe(function(){
+  console.log("subscribed to topic");
+});
+
+//Errors in publishing are surfaced through the 'errors' property
+topic.errors.subscribe(function(err){
+  console.log("There was an error publishing the message");
+});
+
+//subscribe to the observer
+topic.subscribe(observer);
+
+//publish to the observer
+Rx.Observable.generateWithRelativeTime(0, 
+  function(x) {return x < 42; },
+  function(x) {return x + 1; },
+  function(x) {return {args : [x]}; },
+  function(x) {return 15; })
+  .subscribe(topic);
+  
+
+```
+
 ### Registering methods
 #### Note that this will only work in version 2
 ```javascript
@@ -133,8 +163,6 @@ var registration =
 registration.dispose();
 
 ```
-
-
 
 ### Calling methods
 
