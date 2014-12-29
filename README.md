@@ -192,12 +192,14 @@ caller(2, 3)
 
 ### Advanced
 
-
+#### Weather Station Monitor
 
 ```javascript
 
-//Some readings
+//listen for sensor readings
 var sensorReadings = Rx.Observable.subscribeAsObservable(session, "weather.sensor");
+
+//A remote service for analyzing our readings, it might be aggregating across several different sources
 var analyzer = Rx.Observable.callAsObservable(session, "weather.forecast.compute");
 
 //Home control settings
@@ -216,19 +218,23 @@ sensorReadings
     Rx.Observable.publishAsObservable(session, "weather.visualizer.daily", readings);
   })
   .flatMap(function(readings) {
+    //This returns an observable which we will flatMap back into our stream
     return analyzer(readings);
   })
   .publish().refCount();
 
 //Warn of inclement weather coming in  
 dailyForecast
+  //only get warnings
   .filter(function(weather) {
     return weather.warnings.length > 0;
   })
   .map(function(weather) {
+    //remap only the first warning, don't know why, just cause
     var warning = weather.warnings[0];
-    return {type : warning.type, severity : warning.severity};
+    return {type : warning.type, severity : warning.severity, message : "GET TO DA CHOPPA!!"};
   })
+  //Publish it to our klaxon service to warn everyone on the block
   .subscribe(Rx.Observable.publishAsObservable.bind(null, session, "weather.warnings.klaxon"));
   
 //Notify the climate control to turn off
