@@ -211,7 +211,7 @@ sensorReadings
   })
   .throttleFirst(1000) // At most once every second
   .bufferWithTime(1000 * 60 * 60 * 24) //Milliseconds in a day
-  .tap(function(reading) {
+  .tap(function(readings) {
     //Send these off to our visualizer somewhere on the network
     Rx.Observable.publishAsObservable(session, "weather.visualizer.daily", readings);
   })
@@ -227,7 +227,7 @@ dailyForecast
   })
   .map(function(weather) {
     var warning = weather.warnings[0];
-    return {type : warning.type, severity : severity};
+    return {type : warning.type, severity : warning.severity};
   })
   .subscribe(Rx.Observable.publishAsObservable.bind(null, session, "weather.warnings.klaxon"));
   
@@ -272,7 +272,7 @@ var pipeline =
 
 - [X] [Major] ~~Implement cross-platform compatibility (currently only works in node)~~
 - [ ] [Major] Bug fixing
-- [ ] [Major] Improve API semantics and readability
+- [X] [Major] Improve API semantics and readability
 - [ ] [Major] Push to cdn platforms (~~npm~~/bower/cdnjs or microjs).
 - [x] [Minor] ~~Add v1 backward compatibility~~
 
