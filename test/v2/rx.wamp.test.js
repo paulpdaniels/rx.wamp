@@ -22,7 +22,7 @@ describe('V2', function () {
         var mock_session;
         var mock_connection;
         var stub_connection;
-        var testScheduler;
+        var test_scheduler;
 
         before(function () {
             mock_session = sinon.mock({
@@ -60,12 +60,12 @@ describe('V2', function () {
 
             mock_connection.restore();
 
-            testScheduler = new Rx.TestScheduler();
+            test_scheduler = new Rx.TestScheduler();
         });
 
         it('should return a new session object onNext', function () {
 
-            var results = testScheduler.startWithCreate(function () {
+            var results = test_scheduler.startWithCreate(function () {
                 return connector;
             });
 
@@ -77,7 +77,7 @@ describe('V2', function () {
 
             mock_connection.expects("close").once();
 
-            var result = testScheduler.startWithCreate(function () {
+            var result = test_scheduler.startWithCreate(function () {
                 return connector;
             });
 
@@ -90,7 +90,7 @@ describe('V2', function () {
             var error = new Error();
             sinon.stub(mock_connection.object, "open").throws(error);
 
-            var result = testScheduler.startWithCreate(function () {
+            var result = test_scheduler.startWithCreate(function () {
                 return connector;
             });
 
@@ -103,32 +103,32 @@ describe('V2', function () {
 
     describe(".Session", function () {
 
-        var testScheduler;
+        var test_scheduler;
         var mock_session;
         var sample_data = {args: [42], kwargs: {key: 'value'}};
 
         beforeEach(function () {
 
-            testScheduler = new Rx.TestScheduler();
+            test_scheduler = new Rx.TestScheduler();
 
             mock_session = sinon.mock({
                 subscribe: function (topic, handler, options) {
                     handler([1, 2], {key: "value"});
-                    return testScheduler.createResolvedPromise(201, {});
+                    return test_scheduler.createResolvedPromise(201, {});
                 },
                 unsubscribe: function () {
 
                 },
                 publish: function () {
-                    return testScheduler.createResolvedPromise(201, {});
+                    return test_scheduler.createResolvedPromise(201, {});
                 },
                 register: function () {
-                    return testScheduler.createResolvedPromise(201, {});
+                    return test_scheduler.createResolvedPromise(201, {});
                 },
                 unregister: function () {
                 },
                 call: function () {
-                    return testScheduler.createResolvedPromise(201, sample_data);
+                    return test_scheduler.createResolvedPromise(201, sample_data);
                 }
             });
 
@@ -142,10 +142,10 @@ describe('V2', function () {
                 mock_session.expects("subscribe")
                     .once()
                     .withArgs(sinon.match("wamp.io.test"))
-                    .returns(testScheduler.createResolvedPromise(201, {}));
+                    .returns(test_scheduler.createResolvedPromise(201, {}));
 
-                var openObserver = testScheduler.createObserver();
-                var results = testScheduler.startWithCreate(function () {
+                var openObserver = test_scheduler.createObserver();
+                var results = test_scheduler.startWithCreate(function () {
 
                     var subject = new Rx.Subject();
 
@@ -172,9 +172,9 @@ describe('V2', function () {
                 mock_session.expects("register")
                     .once()
                     .withArgs(sinon.match("wamp.io.add"), sinon.match.func)
-                    .returns(testScheduler.createResolvedPromise(201, {}));
+                    .returns(test_scheduler.createResolvedPromise(201, {}));
 
-                var result = testScheduler.startWithCreate(function () {
+                var result = test_scheduler.startWithCreate(function () {
                     return Rx.Observable.registerAsObservable(mock_session.object, 'wamp.io.add', function (args, kwargs, options) {
                         return args[0] + args[1];
                     });
@@ -193,15 +193,71 @@ describe('V2', function () {
                 mock_session.expects("publish")
                     .once()
                     .withArgs(sinon.match('wamp.io.test'), sinon.match.array, sinon.match.object)
-                    .returns(testScheduler.createResolvedPromise(201, {}));
+                    .returns(test_scheduler.createResolvedPromise(201, {}));
 
 
-                var result = testScheduler.startWithCreate(function () {
+                var result = test_scheduler.startWithCreate(function () {
                     return Rx.Observable.publishAsObservable(mock_session.object, 'wamp.io.test', [1, 2], {test: "test"});
                 });
 
                 result.messages.should.eql([onNext(201, {}), onCompleted(201)]);
                 mock_session.verify();
+            });
+
+        });
+
+        describe('#pubsub', function () {
+
+            it('should be able to subscribe', function () {
+                var result = test_scheduler.startWithCreate(function () {
+                    return Rx.Observable.fromPubSubPattern(mock_session.object, 'wamp.io.test');
+                });
+
+                result.messages.should.eql([onNext(200, {
+                    "args": [
+                        1,
+                        2
+                    ],
+                    "kwargs": {
+                        "key": "value"
+                    }
+                })]);
+            });
+
+            it('should be able to publish', function () {
+                var result = test_scheduler.createObserver();
+
+                mock_session.expects("publish")
+                    .once()
+                    .withArgs(sinon.match("wamp.io.test"), sinon.match([42]), sinon.match({key : "value"}));
+
+                var subject = Rx.Observable.fromPubSubPattern(mock_session.object, 'wamp.io.test');
+
+                subject
+                    .observeOn(test_scheduler)
+                    .subscribeOn(test_scheduler)
+                    .subscribe(result);
+
+                subject.onNext({args: [42], kwargs: {key: "value"}});
+
+                result.messages.should.eql([]);
+                mock_session.verify();
+            });
+
+            it('should be able to surface errors in publishing', function () {
+
+                mock_session.expects("publish")
+                    .once()
+                    .returns(test_scheduler.createRejectedPromise(201, new Error("no pubsub")));
+
+                var result = test_scheduler.startWithCreate(function () {
+                    var subject = Rx.Observable.fromPubSubPattern(mock_session.object, 'wamp.io.test');
+                    subject.onNext({args : [42]});
+                    return subject.errors;
+                });
+
+                result.messages.should.eql([onNext(201, new Error("no pubsub"))]);
+
             });
 
         });
@@ -213,9 +269,9 @@ describe('V2', function () {
                 mock_session.expects("call")
                     .once()
                     .withArgs(sinon.match("wamp.io.add"), sinon.match.array, sinon.match.object)
-                    .returns(testScheduler.createResolvedPromise(201, sample_data));
+                    .returns(test_scheduler.createResolvedPromise(201, sample_data));
 
-                var result = testScheduler.startWithCreate(function () {
+                var result = test_scheduler.startWithCreate(function () {
                     return Rx.Observable.callAsObservable(mock_session.object, "wamp.io.add")([1, 2], {});
                 });
 
@@ -233,11 +289,11 @@ describe('V2', function () {
                 mock_session
                     .expects("call")
                     .thrice()
-                    .onFirstCall().returns(testScheduler.createResolvedPromise(203, 5))
-                    .onSecondCall().returns(testScheduler.createResolvedPromise(203, 7))
-                    .onThirdCall().returns(testScheduler.createResolvedPromise(203, 35));
+                    .onFirstCall().returns(test_scheduler.createResolvedPromise(203, 5))
+                    .onSecondCall().returns(test_scheduler.createResolvedPromise(203, 7))
+                    .onThirdCall().returns(test_scheduler.createResolvedPromise(203, 35));
 
-                var result = testScheduler.startWithCreate(function () {
+                var result = test_scheduler.startWithCreate(function () {
                     var add = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.add");
                     var multiply = Rx.Observable.callAsObservable(mock_session.object, "wamp.my.multiply");
 

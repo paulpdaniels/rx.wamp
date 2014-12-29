@@ -3,14 +3,7 @@
  */
 
 observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
-
-    var observable = observableStatic.subscribeAsObservable(session, topic, options, openObserver);
-    var observer = Rx.Observer.create(function (value) {
-        observableStatic.publishAsObservable(session, topic, value.args || value.event, value.kwargs, value.options);
-    });
-
-    return Subject.create(observer, observable);
-
+    return new PubSubSubject(session, topic, options, openObserver);
 };
 
 
