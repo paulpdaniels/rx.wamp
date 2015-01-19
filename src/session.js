@@ -2,11 +2,25 @@
  * Created by Paul on 12/24/2014.
  */
 
+/**
+ * Returns a subject that wraps publishing and subscribing to a WAMP topic
+ * @param {Session} session - The session to wrap
+ * @param {String} topic - The topic to publish and subscribe on
+ * @param {Object} options - The options for subscription
+ * @param {Observer} openObserver - An observer for opening the
+ * @returns {PubSubSubject}
+ */
 observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
     return new PubSubSubject(session, topic, options, openObserver);
 };
 
-
+/**
+ * Subscribes on a topic
+ * @param session
+ * @param topic
+ * @param options
+ * @param openObserver
+ */
 observableStatic.subscribeAsObservable = function (session, topic, options, openObserver) {
     return observableStatic.create(function (obs) {
 
@@ -63,12 +77,29 @@ observableStatic.subscribeAsObservable = function (session, topic, options, open
     });
 };
 
+/**
+ * Publish on a topic
+ * @param session
+ * @param topic
+ * @param args
+ * @param kwargs
+ * @param options
+ * @returns {*}
+ */
 observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
     //FIXME apparently we are not supposed to use the Array.prototype.slice work around to get values of the argument object
     var published = session.publish.apply(session, Array.prototype.slice.call(arguments, 1));
     return published ? observablePromise(published) : observableEmpty();
 };
 
+/**
+ * Register a method using an observable
+ *
+ * @param session
+ * @param procedure
+ * @param endpoint
+ * @param options
+ */
 observableStatic.registerAsObservable = function (session, procedure, endpoint, options) {
 
     function innerUnregister(registration) {
@@ -92,6 +123,13 @@ observableStatic.registerAsObservable = function (session, procedure, endpoint, 
     });
 };
 
+/**
+ * Call a method as an observable
+ * @param session
+ * @param procedure
+ * @param options
+ * @returns {Function}
+ */
 observableStatic.callAsObservable = function (session, procedure, options) {
     var args = [procedure];
     return function () {

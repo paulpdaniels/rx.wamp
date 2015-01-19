@@ -36,6 +36,15 @@ function _connection_factory(opts) {
     return new autobahn._connection_cls(opts);
 }
 
+/**
+ * Opens an AutobahnJS connection and propagates each new session on reconnect
+ *
+ * @param {Object} opts
+ * @param {Disposable} keepReconnecting a disposable that will prevent reconnection if it is disposed
+ * @param {Function} factory
+ *
+ * @returns {Observable<Session>} An observable of opened sessions
+ */
 observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 
     var isV2Supported = _isV2Supported();

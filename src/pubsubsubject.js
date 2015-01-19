@@ -2,9 +2,19 @@
  * Created by paulp_000 on 12/28/2014.
  */
 
+
 var PubSubSubject = Rx.PubSubSubject = (function(__super__){
     Rx.internals.inherits(PubSubSubject, __super__);
 
+    /**
+     * Creates a new PubSubSubject
+     *
+     * @param {Session} session - The session that this subject is wrapping
+     * @param {String} topic - The topic of this session
+     * @param {Object} options - The options for subscription
+     * @param {Observer} openObserver - An observer to listen for the connection opening
+     * @constructor
+     */
     function PubSubSubject(session, topic, options, openObserver) {
         var self = this;
         this._errorObservable = new Rx.Subject();
