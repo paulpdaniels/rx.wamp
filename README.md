@@ -177,7 +177,7 @@ registration.dispose();
 
 ##### New in version 0.3!
 
-You can now pass your connection observable directly into your subscription so that it will persist across sessions
+You can now pass your connection observable directly into your registration so that it will persist across sessions
 
 ```javascript
 
