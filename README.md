@@ -78,13 +78,23 @@ var openObserver = Rx.Observer.create();
 var topic = Rx.Observable.subscribeAsObservable(session, "wamp.my.foo", options, openObserver);
 
 //Do all the normal reactive operations on it
-topicObservable
+var topicSubscription = topic
   .filter(validateArgs)
   .map(getResultValue)
   .subscribe(console.log);
     
 //Unsubscribe from topic, you will no longer receive updates from this topic
 topicSubscription.dispose();
+
+```
+
+##### New in version 0.3!
+
+You can now pass your connection observable directly into your subscription so that it will persist across sessions
+
+```javascript
+
+Rx.Observable.subscribeAsObservable(Rx.Observable.fromConnection("ws://myconnectionurl:9090"), "wamp.my.foo", onResult);
 
 ```
 
@@ -100,8 +110,9 @@ Rx.Observable.publishAsObservable(session, "wamp.my.foo", { args : [42], kwargs 
 Rx.Observable.publishAsObservable(session, "wamp.my.foo", { args : [42], kwargs : { key : "value" } }, [12345678]);
 Rx.Observable.publishAsObservable(session, "wamp.my.foo", { args : [42], kwargs : { key : "value" } }, [12345678], [87654321]);
 
-
 ```
+
+
 
 ### Or use them together
 ```javascript
@@ -163,6 +174,19 @@ var registration =
 registration.dispose();
 
 ```
+
+##### New in version 0.3!
+
+You can now pass your connection observable directly into your registration so that it will persist across sessions
+
+```javascript
+
+var connection = Rx.Observable.fromConnection({url : myUrl, realm : 'realm1'});
+
+Rx.Observable.registerAsObservable(connection, "wamp.my.add", endpoint, {});
+
+```
+
 
 ### Calling methods
 
