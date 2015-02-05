@@ -1,6 +1,6 @@
 {
   "name": "rx.wamp",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "A wrapper library for the autobahn wamp v1/v2 library in the browser/node",
   "main": "index.js",
   "directories": {
