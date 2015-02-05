@@ -209,7 +209,7 @@ observableStatic.subscribeAsObservable = function (sessionOrObservable, topic, o
                 return Rx.Observable.create(function(innerObserver) {
                     return new CompositeDisposable(
                         new SubscriptionDisposable(session, innerObservable),
-                        innerObservable.subscribe(innerObserver));
+                        innerObservable.subscribe(innerObserver.onNext.bind(innerObserver)));
                 });
             });
 
@@ -259,7 +259,7 @@ observableStatic.registerAsObservable = function (sessionOrObservable, procedure
                     return new CompositeDisposable(
                         //TODO Currently order is very important here, if this is flipped this won't work
                         new RegistrationDisposable(session, innerObservable),
-                        innerObservable.subscribe(innerObserver)
+                        innerObservable.subscribe(innerObserver.onNext.bind(innerObserver))
 
                     );
                 });

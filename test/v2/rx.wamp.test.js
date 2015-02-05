@@ -161,7 +161,7 @@ describe('V2', function () {
                     return Rx.Observable.subscribeAsObservable(mock_session.object, "wamp.io.test", {}, subject);
                 });
 
-                openObserver.messages.should.eql([onNext(201, {}), onCompleted(201)]);
+                openObserver.messages.should.eql([onNext(201, {})]);
                 results.messages.should.eql([onNext(201, sample_data)]);
                 mock_session.verify();
 
@@ -189,7 +189,7 @@ describe('V2', function () {
                     });
                 });
 
-                result.messages.should.eql([onNext(201, {args : [42]}), onCompleted(201)]);
+                result.messages.should.eql([onNext(201, {args : [42]})]);
                 mock_session.verify();
 
             })
