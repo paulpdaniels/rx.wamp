@@ -7,4 +7,5 @@ var observableStatic = Rx.Observable,
     CompositeDisposable = Rx.CompositeDisposable,
     SerialDisposable = Rx.SerialDisposable,
     autobahn = autobahn || ab,
-    sessionProto = autobahn.Session.prototype;
+    sessionProto = autobahn.Session.prototype,
+    isObservable = function(obs) { return obs && obs.subscribe;};

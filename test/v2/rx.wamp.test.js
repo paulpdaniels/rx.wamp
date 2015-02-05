@@ -144,18 +144,21 @@ describe('V2', function () {
                     .withArgs(sinon.match("wamp.io.test"))
                     .returns(test_scheduler.createResolvedPromise(201, {}));
 
+                mock_session.expects("unsubscribe")
+                    .once();
+
                 var openObserver = test_scheduler.createObserver();
                 var results = test_scheduler.startWithCreate(function () {
 
                     var subject = new Rx.Subject();
 
                     subject
-                        .do(function () {
+                        .tap(function () {
                             mock_session.expectations.subscribe[0].firstCall.args[1]([42], {key: "value"});
                         })
                         .subscribe(openObserver);
 
-                    return Rx.Observable.subscribeAsObservable(mock_session.object, "wamp.io.test", {}, subject)
+                    return Rx.Observable.subscribeAsObservable(mock_session.object, "wamp.io.test", {}, subject);
                 });
 
                 openObserver.messages.should.eql([onNext(201, {}), onCompleted(201)]);
@@ -169,10 +172,16 @@ describe('V2', function () {
 
             it('should be able to register for topics', function () {
 
+                var promise = test_scheduler.createResolvedPromise(201, {args : [42]});
+
                 mock_session.expects("register")
                     .once()
                     .withArgs(sinon.match("wamp.io.add"), sinon.match.func)
-                    .returns(test_scheduler.createResolvedPromise(201, {}));
+                    .returns(promise);
+
+                mock_session.expects("unregister")
+                    .once()
+                    .withArgs(sinon.match({args : [42]}));
 
                 var result = test_scheduler.startWithCreate(function () {
                     return Rx.Observable.registerAsObservable(mock_session.object, 'wamp.io.add', function (args, kwargs, options) {
@@ -180,7 +189,7 @@ describe('V2', function () {
                     });
                 });
 
-                result.messages.should.eql([onNext(201, {}), onCompleted(201)]);
+                result.messages.should.eql([onNext(201, {args : [42]}), onCompleted(201)]);
                 mock_session.verify();
 
             })
