@@ -10,7 +10,7 @@ autobahn._connection_cls = autobahn.Connection || function (opts) {
         url = opts;
         opts = {};
     } else if (typeof opts === 'object') {
-        url = opts.uri;
+        url = opts.uri || opts.url;
     } else {
         throw new Error('Wamp options must not be undefined or null!');
     }
@@ -28,7 +28,7 @@ autobahn._connection_cls = autobahn.Connection || function (opts) {
     };
 
     this.open = function () {
-        autobahn.connect(uri, this._onopen.bind(this), this.onclose, opts);
+        autobahn.connect(url, this._onopen.bind(this), this.onclose, opts);
     };
 
     this.close = function () {
