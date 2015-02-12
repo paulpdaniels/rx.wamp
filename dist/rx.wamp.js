@@ -59,6 +59,12 @@ var _isV2Supported = function() {
 
 autobahn._connection_cls = autobahn.Connection || function (opts) {
 
+    if (typeof opts === 'string') {
+        var uri = opts;
+        opts = {};
+    } else {
+        var uri = opts.uri;
+    }
     this.uri = typeof opts === 'object' ? opts.url : opts;
 
     var disposable = new SerialDisposable();

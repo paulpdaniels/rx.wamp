@@ -1,12 +1,11 @@
 /**
  * Created by paulp_000 on 12/25/2014.
  */
-var when = require('when');
 var chai = require('chai');
 var should = chai.should();
 var sinon = require('sinon');
 
-var autobahn = require('../../src/autobahn_v1');
+var autobahn = require('./autobahn_v1');
 var Rx = require('../../index')(autobahn);
 
 var onNext = Rx.ReactiveTest.onNext;
