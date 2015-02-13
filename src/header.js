@@ -8,4 +8,4 @@ var observableStatic = Rx.Observable,
     SerialDisposable = Rx.SerialDisposable,
     autobahn = autobahn || ab,
     sessionProto = autobahn.Session.prototype,
-    isObservable = function(obs) { return obs && obs.subscribe;};
+    isObservable = function(obs) { return obs && typeof obs.subscribe === 'function';};

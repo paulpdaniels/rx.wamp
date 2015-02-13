@@ -48,9 +48,7 @@ observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 
     var isV2Supported = _isV2Supported();
 
-    var CONNECTION_CLOSED = autobahn.CONNECTION_CLOSED || "closed";
-    var CONNECTION_UNREACHABLE = autobahn.CONNECTION_UNREACHABLE || "unreachable";
-    var CONNECTION_LOST = autobahn.CONNECTION_LOST || "lost";
+
 
     var connection = (factory || _connection_factory)(opts);
 

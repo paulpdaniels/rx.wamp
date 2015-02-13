@@ -2,6 +2,29 @@
  * Created by Paul on 12/24/2014.
  */
 
+observableStatic.fromSession = function(url, options) {
+
+    return observableCreate(function(obs){
+
+        function onopen() {
+            obs.onNext(session);
+        }
+
+        function onhangup(code, reason) {
+            if (code === CONNECTION_CLOSED)
+                obs.onCompleted();
+            else
+                obs.onError(code, reason);
+        }
+
+        var session = new autobahn.Session(url, onopen, onhangup, options);
+
+        return Disposable.create(function(){
+            session.close();
+        });
+    });
+};
+
 observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
     return new PubSubSubject(session, topic, options, openObserver);
 };
