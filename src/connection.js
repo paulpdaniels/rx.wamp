@@ -71,15 +71,13 @@ observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
                 case CONNECTION_LOST:
                     if (!keepReconnecting.isDisposed)
                         return true;
-                    else
-                        obs.onCompleted();
-                    break;
                 case CONNECTION_CLOSED:
                 default:
                     obs.onCompleted();
                     break;
-
             }
+
+            return false;
         };
 
         connection.open();

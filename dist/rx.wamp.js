@@ -131,15 +131,13 @@ observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
                 case CONNECTION_LOST:
                     if (!keepReconnecting.isDisposed)
                         return true;
-                    else
-                        obs.onCompleted();
-                    break;
                 case CONNECTION_CLOSED:
                 default:
                     obs.onCompleted();
                     break;
-
             }
+
+            return false;
         };
 
         connection.open();
@@ -290,7 +288,7 @@ observableStatic.registerAsObservable = function (sessionOrObservable, procedure
                 var registration = session.register(procedure, endpoint, options),
                     innerObservable = observablePromise(registration);
 
-                return Rx.Observable.create(function(innerObserver){
+                return observableCreate(function(innerObserver){
                     return new CompositeDisposable(
                         //TODO Currently order is very important here, if this is flipped this won't work
                         new RegistrationDisposable(session, innerObservable),
