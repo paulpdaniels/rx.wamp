@@ -1,5 +1,6 @@
 var observableStatic = Rx.Observable,
     observableEmpty = observableStatic.empty,
+    observableCreate = observableStatic.create,
     observablePromise = observableStatic.fromPromise,
     observerStatic = Rx.Observer,
     Subject = Rx.Subject,

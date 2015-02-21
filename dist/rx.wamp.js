@@ -39,6 +39,7 @@
 
 var observableStatic = Rx.Observable,
     observableEmpty = observableStatic.empty,
+    observableCreate = observableStatic.create,
     observablePromise = observableStatic.fromPromise,
     observerStatic = Rx.Observer,
     Subject = Rx.Subject,
@@ -47,11 +48,16 @@ var observableStatic = Rx.Observable,
     SerialDisposable = Rx.SerialDisposable,
     autobahn = autobahn || ab,
     sessionProto = autobahn.Session.prototype,
-    isObservable = function(obs) { return obs && obs.subscribe;};
+    isObservable = function(obs) { return obs && typeof obs.subscribe === 'function';};
+
 
 var _isV2Supported = function() {
     return typeof autobahn.version !== 'function' || autobahn.version() !== "?.?.?" && !!autobahn.Connection;
 };
+
+var CONNECTION_CLOSED = autobahn.CONNECTION_CLOSED || "closed",
+    CONNECTION_UNREACHABLE = autobahn.CONNECTION_UNREACHABLE || "unreachable",
+    CONNECTION_LOST = autobahn.CONNECTION_LOST || "lost";
 /**
  * Created by Paul on 12/24/2014.
  */
@@ -102,9 +108,7 @@ observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 
     var isV2Supported = _isV2Supported();
 
-    var CONNECTION_CLOSED = autobahn.CONNECTION_CLOSED || "closed";
-    var CONNECTION_UNREACHABLE = autobahn.CONNECTION_UNREACHABLE || "unreachable";
-    var CONNECTION_LOST = autobahn.CONNECTION_LOST || "lost";
+
 
     var connection = (factory || _connection_factory)(opts);
 
@@ -150,6 +154,29 @@ observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 /**
  * Created by Paul on 12/24/2014.
  */
+
+observableStatic.fromSession = function(url, options) {
+
+    return observableCreate(function(obs){
+
+        function onopen() {
+            obs.onNext(session);
+        }
+
+        function onhangup(code, reason) {
+            if (code === CONNECTION_CLOSED)
+                obs.onCompleted();
+            else
+                obs.onError(code, reason);
+        }
+
+        var session = new autobahn.Session(url, onopen, onhangup, options);
+
+        return Disposable.create(function(){
+            session.close();
+        });
+    });
+};
 
 observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
     return new PubSubSubject(session, topic, options, openObserver);

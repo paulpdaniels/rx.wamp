@@ -74,6 +74,41 @@ describe("V1", function () {
             })
         });
 
+        describe('#fromSession', function(){
+
+            var mockWebSocket;
+            var spied;
+            beforeEach(function(){
+
+                mockWebSocket = sinon.mock({});
+                sinon.spy(autobahn, 'Session');
+                sinon.stub(autobahn, '_construct').returns(mockWebSocket.object);
+            });
+
+            afterEach(function() {
+                autobahn.Session.restore();
+            });
+
+            it('should complete on close', function(){
+
+                var testObserver = test_scheduler.createObserver();
+
+                Rx.Observable.fromSession('ws://fake-url.com').subscribe(testObserver);
+
+                mockWebSocket.object.onmessage({ data : '[0, "someid", 1, "fake-server"]'});
+
+                test_scheduler.start();
+
+                testObserver.messages.length.should.equal(1);
+                testObserver.messages[0].value.value.should.have.property("_server", "fake-server");
+                testObserver.messages[0].value.value.should.have.property("_session_id", "someid");
+                testObserver.messages[0].value.value.should.have.property("_websocket", mockWebSocket.object);
+            });
+
+
+            it('should propogate an error on failed close');
+        });
+
 
         describe('#subscribeAsObservable', function () {
 
