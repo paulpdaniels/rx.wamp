@@ -25,6 +25,14 @@ observableStatic.fromSession = function(url, options) {
     });
 };
 
+observableStatic.authreqAsObservable = function(session, auth, authKey, extras) {
+
+    return observablePromise(session.authreq(authKey, extras))
+        .flatMap(function(challenge){
+            return auth.call(session, challenge);
+        });
+};
+
 observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
     return new PubSubSubject(session, topic, options, openObserver);
 };

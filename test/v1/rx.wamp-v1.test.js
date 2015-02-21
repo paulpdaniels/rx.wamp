@@ -70,7 +70,11 @@ describe("V1", function () {
                 unsubscribe: function () {
                 },
                 call: function () {
-                }
+                },
+                authreq : function() {
+                },
+                auth : function(){},
+                authsign : function(){}
             })
         });
 
@@ -176,6 +180,44 @@ describe("V1", function () {
                 mock_session.verify();
                 result.messages.should.eql([onNext(201, 42), onCompleted(201)]);
 
+            });
+        });
+
+        describe('#authentication', function(){
+
+
+            it('should authenticate', function(){
+
+                mock_session
+                    .expects('authreq')
+                    .once()
+                    .withArgs(sinon.match('blahblah'), sinon.match.object)
+                    .returns(test_scheduler.createResolvedPromise(201, 42));
+
+                mock_session
+                    .expects('auth')
+                    .once()
+                    .withArgs(sinon.match('the answer'))
+                    .returns(test_scheduler.createResolvedPromise(202, 'authenticated!'));
+
+                mock_session
+                    .expects('authsign')
+                    .once()
+                    .returns('the answer');
+
+                var results = test_scheduler.startWithCreate(function() {
+                    return Rx.Observable.authreqAsObservable(mock_session.object,
+                        function (challenge) {
+                            var signature = this.authsign(challenge, "");
+                            return this.auth(signature);
+                        },
+                        "blahblah",
+                        {}
+                    );
+                });
+
+                mock_session.verify();
+                results.messages.should.eql([onNext(202, 'authenticated!'), onCompleted(202)]);
             });
         });
 
