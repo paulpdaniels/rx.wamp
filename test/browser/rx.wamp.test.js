@@ -36,6 +36,9 @@ describe('WAMP version 1', function () {
         });
 
         it('should be able to subscribe to methods', function (done) {
+
+            this.timeout(5000);
+
             Rx.Observable.subscribeAsObservable(session, "topic.something")
                 .subscribe(function (value) {
                     done();
