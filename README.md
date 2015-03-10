@@ -214,6 +214,25 @@ caller(2, 3)
 
 ```
 
+### Authentication
+#### Currently only available in V1
+
+
+```javascript
+
+//In this case the *this* of the onchallenge function will be the session.
+Rx.Observable.authreqAsObservable(session, 
+//Raised when the server challenges the authentication
+function onchallenge(challenge){
+  var signature = this.authsign(challenge, "");
+  return this.auth(signature);
+}, 
+"blahsomeauthenticationkeyblah", 
+{});
+
+```
+
+
 ### Advanced
 
 #### Weather Station Monitor
