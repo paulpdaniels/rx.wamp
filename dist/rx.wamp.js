@@ -38,6 +38,7 @@
 
 
 var observableStatic = Rx.Observable,
+    observableWamp = Rx.WAMP = {},
     observableEmpty = observableStatic.empty,
     observableCreate = observableStatic.create,
     observablePromise = observableStatic.fromPromise,
@@ -104,7 +105,7 @@ function _connection_factory(opts) {
     return new autobahn._connection_cls(opts);
 }
 
-observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
+observableWamp.fromConnection = observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 
     var isV2Supported = _isV2Supported();
 
@@ -153,7 +154,7 @@ observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
  * Created by Paul on 12/24/2014.
  */
 
-observableStatic.fromSession = function(url, options) {
+observableWamp.fromSession = observableStatic.fromSession = function(url, options) {
 
     return observableCreate(function(obs){
 
@@ -176,7 +177,17 @@ observableStatic.fromSession = function(url, options) {
     });
 };
 
-observableStatic.authreqAsObservable = function(session, auth, authKey, extras) {
+
+/**
+ * Authenticates the session and returns a value when the authentication has completed
+ *
+ * @param session
+ * @param {Function} auth - Authentication function to call, this is the session
+ * @param {String} authKey - The key to passe to the server to initiate authentication
+ * @param {Object} extras - Passes optional extras to the authentication
+ * @returns {Rx.Observable<TResult>|*}
+ */
+observableWamp.authreqAsObservable = observableStatic.authreqAsObservable = function(session, auth, authKey, extras) {
 
     return observablePromise(session.authreq(authKey, extras))
         .flatMap(function(challenge){
@@ -184,7 +195,7 @@ observableStatic.authreqAsObservable = function(session, auth, authKey, extras) 
         });
 };
 
-observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
+observableWamp.fromPubSubPattern = observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
     return new PubSubSubject(session, topic, options, openObserver);
 };
 
@@ -221,7 +232,7 @@ var SubscriptionDisposable = (function(){
 
 
 
-observableStatic.subscribeAsObservable = function (sessionOrObservable, topic, options, openObserver) {
+observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = function (sessionOrObservable, topic, options, openObserver) {
     var v2 = _isV2Supported();
     return observableStatic.create(function (obs) {
 
@@ -258,7 +269,7 @@ observableStatic.subscribeAsObservable = function (sessionOrObservable, topic, o
     });
 };
 
-observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
+observableWamp.publishAsObservable = observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
     //FIXME apparently we are not supposed to use the Array.prototype.slice work around to get values of the argument object
     var published = session.publish.apply(session, Array.prototype.slice.call(arguments, 1));
     return published ? observablePromise(published) : observableEmpty();
@@ -284,7 +295,7 @@ var RegistrationDisposable = (function(){
 
 })();
 
-observableStatic.registerAsObservable = function (sessionOrObservable, procedure, endpoint, options) {
+observableWamp.registerAsObservable = observableStatic.registerAsObservable = function (sessionOrObservable, procedure, endpoint, options) {
 
     return observableStatic.create(function (obs) {
 
@@ -311,7 +322,7 @@ observableStatic.registerAsObservable = function (sessionOrObservable, procedure
     });
 };
 
-observableStatic.callAsObservable = function (session, procedure, options) {
+observableWamp.callAsObservable = observableStatic.callAsObservable = function (session, procedure, options) {
     var args = [procedure];
     return function () {
         args = args.concat(Array.prototype.slice.call(arguments));

@@ -1,4 +1,5 @@
 var observableStatic = Rx.Observable,
+    observableWamp = Rx.WAMP = {},
     observableEmpty = observableStatic.empty,
     observableCreate = observableStatic.create,
     observablePromise = observableStatic.fromPromise,

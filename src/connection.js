@@ -44,7 +44,7 @@ function _connection_factory(opts) {
     return new autobahn._connection_cls(opts);
 }
 
-observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
+observableWamp.fromConnection = observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 
     var isV2Supported = _isV2Supported();
 
