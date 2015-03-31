@@ -163,6 +163,25 @@ describe("V1", function () {
                 result.messages.should.eql([onCompleted(200)]);
             });
 
+            it ('should propagate an error from subscription', function() {
+
+                //mock_session.expects("publish").withArgs(sinon.match("test.topic"), sinon.match(42));
+                //mock_session.expects("publish").withArgs(sinon.match("test.topic"), sinon.match(42), sinon.match(true));
+                //mock_session.expects("publish").withArgs(sinon.match("test.topic"), sinon.match(42), sinon.match.array, sinon.match.array);
+
+
+                var result = test_scheduler.startWithCreate(function () {
+                    return Rx.Observable.merge(
+                        Rx.Observable.publishAsObservable(mock_session.object, "test.topic", 42),
+                        Rx.Observable.publishAsObservable(mock_session.object, "test.topic", 42, true),
+                        Rx.Observable.publishAsObservable(mock_session.object, "test.topic", 42, [1234], [1234]));
+                });
+
+                mock_session.verify();
+
+                result.messages.should.eql([onCompleted(200)]);
+            });
+
         });
 
         describe('#callAsObservable', function () {

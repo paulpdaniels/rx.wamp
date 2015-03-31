@@ -127,7 +127,7 @@ var RegistrationDisposable = (function(__super__){
  */
 observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = function subscribeAsObservable(sessionOrObservable, topic, options, openObserver) {
     var v2 = _isV2Supported();
-    return observableStatic.create(function (obs) {
+    return observableCreate(function (obs) {
 
         var handler = !v2 ?
             function (topic, event) {
@@ -146,28 +146,31 @@ observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = 
         //FIXME Since we overlap function names, can't use the usual method to determine if something is an observable so add a random function to the check
         sessionOrObservable.subscribe && sessionOrObservable.unsubscribe && (sessionOrObservable = observableStatic.just(sessionOrObservable));
 
+        //TODO use a connectable observable to turn on and of the subscription? Instead of sending it to an optional argument
         var subscriptionObservable = sessionOrObservable
             .flatMapLatest(function(session){
                 var subscription = session.subscribe(topic, handler, options) || {topic : topic, handler : handler},
                     innerObservable = v2 ? observablePromise(subscription) : observableStatic.just(subscription);
 
-                return Rx.Observable.create(function(innerObserver) {
+                return observableCreate(function(innerObserver) {
                     return new CompositeDisposable(
                         new TopicDisposable(session, innerObservable),
-                        innerObservable.subscribe(innerObserver.onNext.bind(innerObserver)));
+                        innerObservable.subscribe(
+                            innerObserver.onNext.bind(innerObserver),
+                            innerObserver.onError.bind(innerObserver)));
                 });
             });
 
-        return subscriptionObservable.subscribe(openObserver);
+        return subscriptionObservable.subscribe(openObserver, obs.onError.bind(obs));
     });
 };
 
 observableWamp.publishAsObservable = observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
     //FIXME apparently we are not supposed to use the Array.prototype.slice work around to get values of the argument object
-    var args = [], len = arguments.length;
+    var largs = [], len = arguments.length;
     //Call this with everything *BUT* the session which will always be the first argument
-    for (var i = 1; i < len; ++i) args.push(arguments[i]);
-    var published = session.publish.apply(session, args);
+    for (var i = 1; i < len; ++i) largs.push(arguments[i]);
+    var published = session.publish.apply(session, largs);
     return published ? observablePromise(published) : observableEmpty();
 };
 

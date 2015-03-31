@@ -257,6 +257,26 @@ describe('V2', function () {
                 })]);
             });
 
+            it('should propagate errors in subscription', function(){
+
+                var error = new Error("error!");
+                var promise = test_scheduler.createRejectedPromise(220, error);
+
+                mock_session.expects('subscribe')
+                    .once()
+                    .withArgs(sinon.match("test.subscription"))
+                    .returns(promise);
+
+                var result = test_scheduler.startWithCreate(function () {
+                    return Rx.Observable.subscribeAsObservable(mock_session.object, "test.subscription");
+                });
+
+                mock_session.verify();
+
+                result.messages.should.eql([onError(220, error)]);
+
+            });
+
             it('should be able to publish', function () {
                 var result = test_scheduler.createObserver();
 
