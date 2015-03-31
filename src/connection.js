@@ -83,8 +83,7 @@ observableWamp.fromConnection = observableStatic.fromConnection = function (opts
         connection.open();
 
         return function () {
-            if (connection)
-                connection.close();
+            connection && connection.close();
         };
 
     });

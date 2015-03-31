@@ -25,7 +25,6 @@ observableWamp.fromSession = observableStatic.fromSession = function(url, option
     });
 };
 
-
 /**
  * Authenticates the session and returns a value when the authentication has completed
  *
@@ -43,11 +42,39 @@ observableWamp.authreqAsObservable = observableStatic.authreqAsObservable = func
         });
 };
 
+/**
+ *
+ * @type {Function}
+ */
 observableWamp.fromPubSubPattern = observableStatic.fromPubSubPattern = function (session, topic, options, openObserver) {
     return new PubSubSubject(session, topic, options, openObserver);
 };
 
 var SubscriptionDisposable = (function(){
+
+    function SubscriptionDisposable(session, subscriber, disposer) {
+        this.session = session;
+        this.disposer = disposer;
+        this.subscription = null;
+        var self = this;
+        this.subscriptionSubscription =
+            subscriber(function(value) {
+                self.subscription = value;
+            });
+    }
+
+    Rx.internals.addProperties(SubscriptionDisposable.prototype, {
+
+        dispose : function() {
+            this.subscriptionSubscription.dispose();
+            this.subscription && this.disposer.call(this, this.session, this.subscription);
+        }
+    });
+
+    return SubscriptionDisposable;
+})();
+
+var TopicDisposable = (function(__super__){
 
     var disposer = _isV2Supported() ?
         function(session, subscription) {
@@ -57,30 +84,42 @@ var SubscriptionDisposable = (function(){
             session.unsubscribe(subscription.topic, subscription.handler);
         };
 
-    function SubscriptionDisposable(session, subscriptionObservable) {
+    function TopicDisposable(session, subscriptionObservable) {
 
-        this.session = session;
-        this.subscription = null;
-        var self = this;
-        this.subscriptionSubscription = subscriptionObservable.subscribe(function(value){
-            self.subscription = value;
-        });
-
+        __super__.call(this, session,
+            function(observer){ return subscriptionObservable.subscribe(observer);},
+            disposer);
     }
 
-    SubscriptionDisposable.prototype.dispose = function() {
-        this.subscriptionSubscription.dispose();
-        this.subscription && disposer.call(this, this.session, this.subscription);
-    };
+    Rx.internals.inherits(TopicDisposable, SubscriptionDisposable);
 
-    return SubscriptionDisposable;
-})();
+    return TopicDisposable;
+})(SubscriptionDisposable);
+
+var RegistrationDisposable = (function(__super__){
+
+    function RegistrationDisposable(session, registrationObservable){
+        __super__.call(this, session,
+            function(observer) { return registrationObservable.subscribe(observer);},
+            function(session, subscription) { session.unregister(subscription);}
+        );
+    }
+
+    Rx.internals.inherits(RegistrationDisposable, __super__);
+
+    return RegistrationDisposable;
+
+})(SubscriptionDisposable);
 
 
-
-
-
-observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = function (sessionOrObservable, topic, options, openObserver) {
+/**
+ *
+ * @param sessionOrObservable
+ * @param topic
+ * @param options
+ * @param openObserver
+ */
+observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = function subscribeAsObservable(sessionOrObservable, topic, options, openObserver) {
     var v2 = _isV2Supported();
     return observableStatic.create(function (obs) {
 
@@ -108,7 +147,7 @@ observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = 
 
                 return Rx.Observable.create(function(innerObserver) {
                     return new CompositeDisposable(
-                        new SubscriptionDisposable(session, innerObservable),
+                        new TopicDisposable(session, innerObservable),
                         innerObservable.subscribe(innerObserver.onNext.bind(innerObserver)));
                 });
             });
@@ -122,26 +161,6 @@ observableWamp.publishAsObservable = observableStatic.publishAsObservable = func
     var published = session.publish.apply(session, Array.prototype.slice.call(arguments, 1));
     return published ? observablePromise(published) : observableEmpty();
 };
-
-var RegistrationDisposable = (function(){
-
-    function RegistrationDisposable(session, registrationObservable){
-        this.session = session;
-        this.registration = null;
-        var self = this;
-        this.subscription = registrationObservable.subscribe(function(reg){
-            self.registration = reg;
-        });
-    }
-
-    RegistrationDisposable.prototype.dispose = function() {
-        this.subscription.dispose();
-        this.registration && this.session.unregister(this.registration);
-    };
-
-    return RegistrationDisposable;
-
-})();
 
 observableWamp.registerAsObservable = observableStatic.registerAsObservable = function (sessionOrObservable, procedure, endpoint, options) {
 
@@ -160,7 +179,6 @@ observableWamp.registerAsObservable = observableStatic.registerAsObservable = fu
                         //TODO Currently order is very important here, if this is flipped this won't work
                         new RegistrationDisposable(session, innerObservable),
                         innerObservable.subscribe(innerObserver.onNext.bind(innerObserver))
-
                     );
                 });
 
@@ -171,10 +189,11 @@ observableWamp.registerAsObservable = observableStatic.registerAsObservable = fu
 };
 
 observableWamp.callAsObservable = observableStatic.callAsObservable = function (session, procedure, options) {
-    var args = [procedure];
+
     return function () {
-        args = args.concat(Array.prototype.slice.call(arguments));
-        if (options) args.push(options);
+        var args = [procedure], len = arguments.length;
+        for (var i = 0; i < len; ++i) args.push(arguments[i]);
+        options && args.push(options);
         return observablePromise(session.call.apply(session, args));
     };
 };
