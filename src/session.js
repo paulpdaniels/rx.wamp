@@ -58,15 +58,21 @@ var SubscriptionDisposable = (function(){
         this.subscription = null;
         var self = this;
         this.subscriptionSubscription =
-            subscriber(function(value) {
-                self.subscription = value;
-            });
+            subscriber(
+                observerCreate(
+                    function(value) {
+                        self.subscription = value;
+
+                    },
+                    function(e) {
+                        self.dispose();
+                    }));
     }
 
     Rx.internals.addProperties(SubscriptionDisposable.prototype, {
 
         dispose : function() {
-            this.subscriptionSubscription.dispose();
+            this.subscriptionSubscription && this.subscriptionSubscription.dispose();
             this.subscription && this.disposer.call(this, this.session, this.subscription);
         }
     });
@@ -158,13 +164,16 @@ observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = 
 
 observableWamp.publishAsObservable = observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
     //FIXME apparently we are not supposed to use the Array.prototype.slice work around to get values of the argument object
-    var published = session.publish.apply(session, Array.prototype.slice.call(arguments, 1));
+    var args = [], len = arguments.length;
+    //Call this with everything *BUT* the session which will always be the first argument
+    for (var i = 1; i < len; ++i) args.push(arguments[i]);
+    var published = session.publish.apply(session, args);
     return published ? observablePromise(published) : observableEmpty();
 };
 
 observableWamp.registerAsObservable = observableStatic.registerAsObservable = function (sessionOrObservable, procedure, endpoint, options) {
 
-    return observableStatic.create(function (obs) {
+    return observableCreate(function (obs) {
 
         sessionOrObservable.unregister && sessionOrObservable.register && (sessionOrObservable = observableStatic.just(sessionOrObservable));
 
@@ -178,7 +187,7 @@ observableWamp.registerAsObservable = observableStatic.registerAsObservable = fu
                     return new CompositeDisposable(
                         //TODO Currently order is very important here, if this is flipped this won't work
                         new RegistrationDisposable(session, innerObservable),
-                        innerObservable.subscribe(innerObserver.onNext.bind(innerObserver))
+                        innerObservable.subscribe(innerObserver.onNext.bind(innerObserver), innerObserver.onError.bind(innerObserver))
                     );
                 });
 

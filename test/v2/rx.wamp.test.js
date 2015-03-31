@@ -192,7 +192,31 @@ describe('V2', function () {
                 result.messages.should.eql([onNext(201, {args : [42]})]);
                 mock_session.verify();
 
-            })
+            });
+
+            it('should propagate an error on registration failure', function(){
+
+                var error = new Error("failed to register!");
+                var promise = test_scheduler.createRejectedPromise(201, error);
+
+                mock_session.expects("register")
+                    .once()
+                    .withArgs(sinon.match("wamp.io.add"), sinon.match.func)
+                    .returns(promise);
+
+                var exp = mock_session.expects("unregister").exactly(0);
+
+                var results = test_scheduler.startWithCreate(function() {
+                    return Rx.WAMP.registerAsObservable(mock_session.object, 'wamp.io.add', function(args, kwargs, options) {
+                        return args[0] + args[1];
+                    });
+                });
+
+                results.messages.should.eql([onError(201, error)]);
+
+                mock_session.verify();
+
+            });
         });
 
         describe("#publishObservable", function () {
@@ -247,7 +271,7 @@ describe('V2', function () {
                     .subscribeOn(test_scheduler)
                     .subscribe(result);
 
-                subject.onNext({args: [42], kwargs: {key: "value"}});
+                subject.onNext(sample_data);
 
                 result.messages.should.eql([]);
                 mock_session.verify();

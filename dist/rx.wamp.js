@@ -43,6 +43,7 @@ var observableStatic = Rx.Observable,
     observableCreate = observableStatic.create,
     observablePromise = observableStatic.fromPromise,
     observerStatic = Rx.Observer,
+    observerCreate = observerStatic.create,
     Subject = Rx.Subject,
     Disposable = Rx.Disposable,
     CompositeDisposable = Rx.CompositeDisposable,
@@ -176,7 +177,6 @@ observableWamp.fromSession = observableStatic.fromSession = function(url, option
     });
 };
 
-
 /**
  * Authenticates the session and returns a value when the authentication has completed
  *
@@ -210,15 +210,21 @@ var SubscriptionDisposable = (function(){
         this.subscription = null;
         var self = this;
         this.subscriptionSubscription =
-            subscriber(function(value) {
-                self.subscription = value;
-            });
+            subscriber(
+                observerCreate(
+                    function(value) {
+                        self.subscription = value;
+
+                    },
+                    function(e) {
+                        self.dispose();
+                    }));
     }
 
     Rx.internals.addProperties(SubscriptionDisposable.prototype, {
 
         dispose : function() {
-            this.subscriptionSubscription.dispose();
+            this.subscriptionSubscription && this.subscriptionSubscription.dispose();
             this.subscription && this.disposer.call(this, this.session, this.subscription);
         }
     });
@@ -239,27 +245,28 @@ var TopicDisposable = (function(__super__){
     function TopicDisposable(session, subscriptionObservable) {
 
         __super__.call(this, session,
-            function(observer){
-                return subscriptionObservable.subscribe(observer);},
+            function(observer){ return subscriptionObservable.subscribe(observer);},
             disposer);
-
-        //this.session = session;
-        //this.subscription = null;
-        //var self = this;
-        //this.subscriptionSubscription = subscriptionObservable.subscribe(function(value){
-        //    self.subscription = value;
-        //});
-
     }
 
     Rx.internals.inherits(TopicDisposable, SubscriptionDisposable);
 
-    //TopicDisposable.prototype.dispose = function() {
-    //    this.subscriptionSubscription.dispose();
-    //    this.subscription && disposer.call(this, this.session, this.subscription);
-    //};
-
     return TopicDisposable;
+})(SubscriptionDisposable);
+
+var RegistrationDisposable = (function(__super__){
+
+    function RegistrationDisposable(session, registrationObservable){
+        __super__.call(this, session,
+            function(observer) { return registrationObservable.subscribe(observer);},
+            function(session, subscription) { session.unregister(subscription);}
+        );
+    }
+
+    Rx.internals.inherits(RegistrationDisposable, __super__);
+
+    return RegistrationDisposable;
+
 })(SubscriptionDisposable);
 
 
@@ -309,39 +316,16 @@ observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = 
 
 observableWamp.publishAsObservable = observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
     //FIXME apparently we are not supposed to use the Array.prototype.slice work around to get values of the argument object
-    var published = session.publish.apply(session, Array.prototype.slice.call(arguments, 1));
+    var args = [], len = arguments.length;
+    //Call this with everything *BUT* the session which will always be the first argument
+    for (var i = 1; i < len; ++i) args.push(arguments[i]);
+    var published = session.publish.apply(session, args);
     return published ? observablePromise(published) : observableEmpty();
 };
 
-var RegistrationDisposable = (function(__super__){
-
-    function RegistrationDisposable(session, registrationObservable){
-        __super__.call(this, session,
-            function(observer) { return registrationObservable.subscribe(observer);},
-            function(session, subscription) { session.unregister(subscription);}
-        );
-        //this.session = session;
-        //this.registration = null;
-        //var self = this;
-        //this.subscription = registrationObservable.subscribe(function(reg){
-        //    self.registration = reg;
-        //});
-    }
-
-    Rx.internals.inherits(RegistrationDisposable, __super__);
-
-    //RegistrationDisposable.prototype.dispose = function() {
-    //    this.subscription.dispose();
-    //    this.registration && this.session.unregister(this.registration);
-    //};
-
-    return RegistrationDisposable;
-
-})(SubscriptionDisposable);
-
 observableWamp.registerAsObservable = observableStatic.registerAsObservable = function (sessionOrObservable, procedure, endpoint, options) {
 
-    return observableStatic.create(function (obs) {
+    return observableCreate(function (obs) {
 
         sessionOrObservable.unregister && sessionOrObservable.register && (sessionOrObservable = observableStatic.just(sessionOrObservable));
 
@@ -355,8 +339,7 @@ observableWamp.registerAsObservable = observableStatic.registerAsObservable = fu
                     return new CompositeDisposable(
                         //TODO Currently order is very important here, if this is flipped this won't work
                         new RegistrationDisposable(session, innerObservable),
-                        innerObservable.subscribe(innerObserver.onNext.bind(innerObserver))
-
+                        innerObservable.subscribe(innerObserver.onNext.bind(innerObserver), innerObserver.onError.bind(innerObserver))
                     );
                 });
 
@@ -367,10 +350,11 @@ observableWamp.registerAsObservable = observableStatic.registerAsObservable = fu
 };
 
 observableWamp.callAsObservable = observableStatic.callAsObservable = function (session, procedure, options) {
-    var args = [procedure];
+
     return function () {
-        args = args.concat(Array.prototype.slice.call(arguments));
-        if (options) args.push(options);
+        var args = [procedure], len = arguments.length;
+        for (var i = 0; i < len; ++i) args.push(arguments[i]);
+        options && args.push(options);
         return observablePromise(session.call.apply(session, args));
     };
 };
