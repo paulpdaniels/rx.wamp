@@ -217,6 +217,25 @@ describe('V2', function () {
                 mock_session.verify();
 
             });
+
+            it('should only register once', function() {
+
+                var promise = test_scheduler.createResolvedPromise(200, true);
+
+                mock_session.expects("register")
+                    .once()
+                    .returns(promise);
+
+                var registration = Rx.WAMP.registerAsObservable(mock_session.object, "wamp.io.add", function(args, kwargs, options){
+                    return true;
+                });
+
+                registration.subscribe();
+                registration.subscribe();
+
+                mock_session.verify();
+
+            });
         });
 
         describe("#publishObservable", function () {

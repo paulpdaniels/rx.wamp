@@ -211,7 +211,7 @@ observableWamp.registerAsObservable = observableStatic.registerAsObservable = fu
             });
 
         return registrationObservable.subscribe(obs);
-    });
+    }).publish().refCount();
 };
 
 observableWamp.callAsObservable = observableStatic.callAsObservable = function (session, procedure, options) {
