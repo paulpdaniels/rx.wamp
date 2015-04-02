@@ -11,4 +11,6 @@ var observableStatic = Rx.Observable,
     SerialDisposable = Rx.SerialDisposable,
     autobahn = autobahn || ab,
     sessionProto = autobahn.Session.prototype,
-    isObservable = function(obs) { return obs && typeof obs.subscribe === 'function';};
+    isObservable = function(obs) { return obs && typeof obs.subscribe === 'function';},
+    isPromise = Rx.helpers.isPromise,
+    noop = Rx.helpers.noop;

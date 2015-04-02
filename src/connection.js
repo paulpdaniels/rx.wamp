@@ -46,7 +46,7 @@ function _connection_factory(opts) {
 
 observableWamp.fromConnection = observableStatic.fromConnection = function (opts, keepReconnecting, factory) {
 
-    var isV2Supported = _isV2Supported();
+    var isV2Supported = _detectVersion();
 
 
 

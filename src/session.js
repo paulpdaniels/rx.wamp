@@ -82,7 +82,7 @@ var SubscriptionDisposable = (function(){
 
 var TopicDisposable = (function(__super__){
 
-    var disposer = _isV2Supported() ?
+    var disposer = (__version == 2) ?
         function(session, subscription) {
             session.unsubscribe(subscription)
         } :
@@ -126,7 +126,7 @@ var RegistrationDisposable = (function(__super__){
  * @param openObserver
  */
 observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = function subscribeAsObservable(sessionOrObservable, topic, options, openObserver) {
-    var v2 = _isV2Supported();
+    var v2 = (__version == 2);
     return observableCreate(function (obs) {
 
         var handler = !v2 ?
@@ -150,7 +150,7 @@ observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = 
         var subscriptionObservable = sessionOrObservable
             .flatMapLatest(function(session){
                 var subscription = session.subscribe(topic, handler, options) || {topic : topic, handler : handler},
-                    innerObservable = v2 ? observablePromise(subscription) : observableStatic.just(subscription);
+                    innerObservable = isPromise(subscription) ? observablePromise(subscription) : observableStatic.just(subscription);
 
                 return observableCreate(function(innerObserver) {
                     return new CompositeDisposable(
@@ -161,12 +161,26 @@ observableWamp.subscribeAsObservable = observableStatic.subscribeAsObservable = 
                 });
             });
 
-        return subscriptionObservable.subscribe(openObserver, obs.onError.bind(obs));
-    });
+        var onNext;
+        if (openObserver) {
+            (typeof openObserver === 'function') && (onNext = openObserver);
+            (typeof openObserver === 'object') && (onNext = openObserver.onNext.bind(openObserver));
+        }
+
+        !onNext && (onNext = noop);
+
+        //Cases - openObserver
+        //1) undefined
+        //2) function - pass it directly in
+        //3) observer
+        return subscriptionObservable.subscribe(
+            onNext,
+            obs.onError.bind(obs));
+
+    }).publish().refCount();
 };
 
 observableWamp.publishAsObservable = observableStatic.publishAsObservable = function (session, topic, args, kwargs, options) {
-    //FIXME apparently we are not supposed to use the Array.prototype.slice work around to get values of the argument object
     var largs = [], len = arguments.length;
     //Call this with everything *BUT* the session which will always be the first argument
     for (var i = 1; i < len; ++i) largs.push(arguments[i]);

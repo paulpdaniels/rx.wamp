@@ -140,6 +140,21 @@ describe("V1", function () {
 
             });
 
+            it('should only create one subscription per call', function() {
+
+                mock_session.expects("subscribe")
+                    .once();
+
+                var topic = Rx.WAMP.subscribeAsObservable(mock_session.object, "test.topic", null);
+
+                topic.subscribe();
+                topic.subscribe();
+
+                mock_session.verify();
+
+
+            });
+
         });
 
         describe('#publishAsObservable', function () {
