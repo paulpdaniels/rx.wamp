@@ -214,12 +214,17 @@ observableWamp.registerAsObservable = observableStatic.registerAsObservable = fu
     }).publish().refCount();
 };
 
-observableWamp.callAsObservable = observableStatic.callAsObservable = function (session, procedure, options) {
+observableWamp.callAsObservable = observableStatic.callAsObservable = function (sessionOrObservable, procedure, options) {
+
+    var sessionObs = sessionOrObservable.unsubscribe ? Rx.Observable.just(sessionOrObservable) : sessionOrObservable;
+    sessionObs = sessionObs.replay(1);
+    sessionObs.connect();
 
     return function () {
-        var args = [procedure], len = arguments.length;
-        for (var i = 0; i < len; ++i) args.push(arguments[i]);
+        for (var args = [procedure], i = 0, len = arguments.length; i < len; ++i) args.push(arguments[i]);
         options && args.push(options);
-        return observablePromise(session.call.apply(session, args));
+        return sessionObs.take(1).flatMap(function(session){
+           return sessionOrObservable.call.apply(session, args);
+        });
     };
 };
