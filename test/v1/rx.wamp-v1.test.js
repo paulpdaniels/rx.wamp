@@ -11,6 +11,7 @@ var Rx = require('../../index')(autobahn);
 var onNext = Rx.ReactiveTest.onNext;
 var onError = Rx.ReactiveTest.onError;
 var onCompleted = Rx.ReactiveTest.onCompleted;
+var subscribe = Rx.ReactiveTest.subscribe;
 
 describe("V1", function () {
 
@@ -254,6 +255,39 @@ describe("V1", function () {
                 results.messages.should.eql([onNext(202, 'authenticated!'), onCompleted(202)]);
             });
         });
+
+        describe('#subscribeTo', function(){
+
+            it('should support multiple subscriptions', function() {
+
+                var scheduler = new Rx.TestScheduler();
+
+                var xs = scheduler.createHotObservable(
+                    onNext(210, mock_session.object)
+                );
+
+                mock_session.expects('subscribe')
+                    .twice();
+
+                var results = scheduler.createObserver();
+
+                var subscription =
+                    Rx.WAMP.subscriber(xs)
+                    .subscribeTo("test.pubsub1", {}, results)
+                    .subscribeTo("test.pubsub2", {}, results.onNext.bind(results));
+
+
+                scheduler.scheduleAbsolute(220, function(){
+                    subscription.dispose();
+                });
+
+                scheduler.start();
+
+                mock_session.verify();
+
+                xs.subscriptions.should.eql([subscribe(0, 220), subscribe(0, 220)]);
+            });
+        })
 
     });
 
