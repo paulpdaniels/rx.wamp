@@ -23,7 +23,8 @@ var Subscriber = (function(){
     };
 
     Subscriber.prototype.subscribeTo = function(topic, options, observerOrOnNext, onError, onCompleted) {
-        var subscription = observableWamp.subscribeAsObservable(this.observable, topic, options)
+        var subscription = observableWamp
+            .subscribeAsObservable(this.observable, topic, options)
             .subscribe(observerOrOnNext, onError, onCompleted);
 
         this.disposable.add(subscription);

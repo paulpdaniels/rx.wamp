@@ -23,7 +23,6 @@ describe("V1", function () {
 
         beforeEach(function () {
 
-
             test_scheduler = new Rx.TestScheduler();
         });
 
@@ -287,7 +286,7 @@ describe("V1", function () {
 
                 xs.subscriptions.should.eql([subscribe(0, 220), subscribe(0, 220)]);
             });
-        })
+        });
 
     });
 

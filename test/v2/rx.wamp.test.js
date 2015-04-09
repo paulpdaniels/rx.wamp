@@ -12,7 +12,8 @@ var asPromised = require('sinon-as-promised');
 
 var onNext = Rx.ReactiveTest.onNext,
     onCompleted = Rx.ReactiveTest.onCompleted,
-    onError = Rx.ReactiveTest.onError;
+    onError = Rx.ReactiveTest.onError,
+    subscribe = Rx.ReactiveTest.subscribe;
 
 describe('V2', function () {
 
@@ -332,6 +333,39 @@ describe('V2', function () {
 
             });
 
+            describe('#subscribeTo', function(){
+
+                it('should support multiple subscriptions', function() {
+
+                    var scheduler = new Rx.TestScheduler();
+
+                    var xs = scheduler.createHotObservable(
+                        onNext(210, mock_session.object)
+                    );
+
+                    mock_session.expects('subscribe')
+                        .twice();
+
+                    var results = scheduler.createObserver();
+
+                    var subscription =
+                        Rx.WAMP.subscriber(xs)
+                            .subscribeTo("test.pubsub1", {}, results)
+                            .subscribeTo("test.pubsub2", {}, results.onNext.bind(results));
+
+
+                    scheduler.scheduleAbsolute(220, function(){
+                        subscription.dispose();
+                    });
+
+                    scheduler.start();
+
+                    mock_session.verify();
+
+                    xs.subscriptions.should.eql([subscribe(0, 220), subscribe(0, 220)]);
+                });
+            });
+
         });
 
         describe("#callAsObservable", function () {
@@ -384,7 +418,7 @@ describe('V2', function () {
 
             });
 
-        })
+        });
 
     });
 });
