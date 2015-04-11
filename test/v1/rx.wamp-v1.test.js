@@ -272,8 +272,8 @@ describe("V1", function () {
 
                 var subscription =
                     Rx.WAMP.subscriber(xs)
-                    .subscribeTo("test.pubsub1", {}, results)
-                    .subscribeTo("test.pubsub2", {}, results.onNext.bind(results));
+                    .to("test.pubsub1", {}, results)
+                    .to("test.pubsub2", {}, results.onNext.bind(results));
 
 
                 scheduler.scheduleAbsolute(220, function(){
