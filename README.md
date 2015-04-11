@@ -21,7 +21,7 @@ A Reactive wrapper library for the autobahn wamp v1/v2 library in the browser/no
 #### RequireJS
 ```javascript
 
-require(['autobahn', 'rx.wamp'], function(autobahn) {
+require(['rx.wamp'], function(Rx) {
 
   //Do stuff
 
@@ -32,7 +32,6 @@ require(['autobahn', 'rx.wamp'], function(autobahn) {
 #### NodeJS
 ```javascript
 
-var autobahn = require('autobahn');
 var rxwamp = require('rx.wamp');
 
 
@@ -95,6 +94,29 @@ You can now pass your connection observable directly into your subscription so t
 ```javascript
 
 Rx.Observable.subscribeAsObservable(Rx.Observable.fromConnection("ws://myconnectionurl:9090"), "wamp.my.foo", onResult);
+
+```
+
+#### New in version 0.5!
+
+You can now use an even shorter-hand for subscription. These will automatically persist across sessions if you use the 
+`fromConnection()` overload.
+
+```javascript
+
+var connection = Rx.Observable.fromConnection("ws://myconnectionurl:9090");
+
+//You can subscribe to as many items as you want
+var subscriber = 
+Rx.Observable.subscriber(connection)
+  .to("wamp.my.foo", {}, fooObserver)
+  .to("wamp.my.other.foo", function(message) {}, function(ex) {}, function(){});
+  
+//You may cancel all of the items with one command as well
+subscriber.dispose();
+  
+  
+  
 
 ```
 
