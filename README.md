@@ -1,4 +1,7 @@
-rx.wamp
+
+
+
+rx.wamp [![NPM version](http://img.shields.io/npm/v/rx.wamp.svg)](https://npmjs.org/package/rx.wamp)
 =======
 
 A Reactive wrapper library for the autobahn wamp v1/v2 library in the browser/node
